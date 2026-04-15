@@ -1,0 +1,10 @@
+{
+  "id": "obsd-review",
+  "name": "Review Simple",
+  "version": "1.0.0",
+  "minAppVersion": "1.4.0",
+  "description": "Periodic note review with status bar indicator",
+  "author": "",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
