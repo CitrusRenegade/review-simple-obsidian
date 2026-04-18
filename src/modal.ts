@@ -11,7 +11,8 @@ export class ConfirmReviewModal extends Modal {
   }
 
   onOpen(): void {
-    const { contentEl } = this;
+    const { contentEl, modalEl } = this;
+    modalEl.addClass("review-simple-modal");
     contentEl.createEl("h2", { text: "Mark as reviewed?" });
     contentEl.createEl("p", {
       text: `Mark "${this.file.basename}" as reviewed today?`,

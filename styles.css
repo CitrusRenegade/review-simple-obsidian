@@ -1,3 +1,7 @@
 .review-status-bar {
   cursor: pointer;
 }
+
+.review-simple-modal .modal-content h2:first-child {
+  margin-top: 0;
+}

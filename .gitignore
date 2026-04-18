@@ -5,3 +5,4 @@ data.json
 .DS_Store
 CLAUDE.md
 .claude/
+.hotreload
