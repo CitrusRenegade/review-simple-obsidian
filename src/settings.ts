@@ -6,9 +6,13 @@ export interface FolderInterval {
   days: number;
 }
 
+export type FolderFilterMode = "excluded" | "included";
+
 export interface ReviewSettings {
   globalIntervalDays: number;
+  folderFilterMode: FolderFilterMode;
   excludedFolders: string[];
+  includedFolders: string[];
   folderIntervals: FolderInterval[];
   frontmatterIntervalKey: string;
   frontmatterReviewedKey: string;
@@ -16,7 +20,9 @@ export interface ReviewSettings {
 
 export const DEFAULT_SETTINGS: ReviewSettings = {
   globalIntervalDays: 45,
+  folderFilterMode: "excluded",
   excludedFolders: [],
+  includedFolders: [],
   folderIntervals: [],
   frontmatterIntervalKey: "review_interval",
   frontmatterReviewedKey: "reviewed",
@@ -51,19 +57,51 @@ export class ReviewSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Excluded folders")
+      .setName("Excluded / Included folders")
       .setDesc(
-        "Folders excluded from review entirely. One path per line, relative to vault root."
+        createFragment((el) => {
+          el.appendText("OFF — listed folders are excluded from review.");
+          el.createEl("br");
+          el.appendText(
+            "ON — only listed folders are reviewed (empty list = nothing reviewed)."
+          );
+        })
       )
-      .addTextArea((text) => {
-        text
-          .setPlaceholder("Templates\nAttachments\nArchive")
-          .setValue(this.plugin.settings.excludedFolders.join("\n"))
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.folderFilterMode === "included")
           .onChange(async (value) => {
-            this.plugin.settings.excludedFolders = value
+            this.plugin.settings.folderFilterMode = value
+              ? "included"
+              : "excluded";
+            await this.plugin.saveSettings();
+            this.display();
+          })
+      );
+
+    const isIncluded = this.plugin.settings.folderFilterMode === "included";
+    new Setting(containerEl)
+      .setName(isIncluded ? "Global included folders" : "Global excluded folders")
+      .setDesc("One path per line, relative to vault root.")
+      .addTextArea((text) => {
+        const currentList = isIncluded
+          ? this.plugin.settings.includedFolders
+          : this.plugin.settings.excludedFolders;
+        text
+          .setPlaceholder(
+            isIncluded ? "Notes\nJournal" : "Templates\nAttachments\nArchive"
+          )
+          .setValue(currentList.join("\n"))
+          .onChange(async (value) => {
+            const parsed = value
               .split("\n")
               .map((s) => s.trim().replace(/\/+$/, ""))
               .filter(Boolean);
+            if (isIncluded) {
+              this.plugin.settings.includedFolders = parsed;
+            } else {
+              this.plugin.settings.excludedFolders = parsed;
+            }
             await this.plugin.saveSettings();
           });
         text.inputEl.rows = 5;

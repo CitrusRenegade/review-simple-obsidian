@@ -4,11 +4,8 @@ Obsidian plugin for periodic note review. Shows review status in the status bar,
 
 ## TODO: Features
 
-- [ ] Подумать над фильтрацией папок: blacklist vs whitelist подход, либо поддержка исключений из исключений в стиле gitignore:
-  ```
-  05-System/
-  !05-System/Daily-Notes
-  ```
+- [x] Режим фильтрации папок: toggle `Include only listed folders` (exclude/include). Списки хранятся раздельно.
+- [ ] Gitignore-style exceptions (опционально). Частично покрыто тем, что `folderIntervals` переопределяют фильтр.
 
 ## TODO: Community Plugin publication
 

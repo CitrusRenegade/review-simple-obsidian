@@ -6,9 +6,12 @@ function getFrontmatter(file: TFile, app: App): Record<string, unknown> {
 }
 
 export function isExcluded(file: TFile, settings: ReviewSettings): boolean {
-  return settings.excludedFolders.some((folder) =>
-    file.path.startsWith(folder + "/")
-  );
+  const list =
+    settings.folderFilterMode === "included"
+      ? settings.includedFolders
+      : settings.excludedFolders;
+  const inList = list.some((folder) => file.path.startsWith(folder + "/"));
+  return settings.folderFilterMode === "included" ? !inList : inList;
 }
 
 export function getLocalInterval(
