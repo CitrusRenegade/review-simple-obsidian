@@ -98,13 +98,19 @@ export function getReviewableFiles(
   });
 }
 
+export function getDueFiles(app: App, settings: ReviewSettings): TFile[] {
+  return getReviewableFiles(app, settings).filter((f) => isDue(f, app, settings));
+}
+
 export function pickRandomDue(
   app: App,
   settings: ReviewSettings
 ): TFile | null {
-  const due = getReviewableFiles(app, settings).filter((f) =>
-    isDue(f, app, settings)
-  );
+  const due = getDueFiles(app, settings);
   if (due.length === 0) return null;
   return due[Math.floor(Math.random() * due.length)];
+}
+
+export function countDue(app: App, settings: ReviewSettings): number {
+  return getDueFiles(app, settings).length;
 }

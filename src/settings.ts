@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import type ReviewPlugin from "./main";
 
 export interface FolderInterval {
@@ -14,6 +14,7 @@ export interface ReviewSettings {
   excludedFolders: string[];
   includedFolders: string[];
   folderIntervals: FolderInterval[];
+  showDueCounter: boolean;
   frontmatterIntervalKey: string;
   frontmatterReviewedKey: string;
 }
@@ -24,6 +25,7 @@ export const DEFAULT_SETTINGS: ReviewSettings = {
   excludedFolders: [],
   includedFolders: [],
   folderIntervals: [],
+  showDueCounter: true,
   frontmatterIntervalKey: "review_interval",
   frontmatterReviewedKey: "reviewed",
 };
@@ -142,6 +144,27 @@ export class ReviewSettingTab extends PluginSettingTab {
         text.inputEl.style.minHeight = "5em";
         text.inputEl.style.minWidth = "24ch";
       });
+
+    new Setting(containerEl)
+      .setName("Show due counter in status bar")
+      .setDesc(
+        createFragment((el) => {
+          el.appendText(
+            "Shows total count of notes due for review across vault, next to the current-note indicator."
+          );
+          el.createEl("br");
+          el.appendText("NOTE: Restart Obsidian after toggling for changes to apply.");
+        })
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showDueCounter)
+          .onChange(async (value) => {
+            this.plugin.settings.showDueCounter = value;
+            await this.plugin.saveSettings();
+            new Notice("To apply statusbar changes please restart Obsidian.");
+          })
+      );
 
     containerEl.createEl("h3", { text: "Advanced" });
 

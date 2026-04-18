@@ -1,6 +1,14 @@
 .review-status-bar {
   cursor: pointer;
+  order: -2;
+}
+
+.review-due-counter {
+  cursor: pointer;
   order: -1;
+  display: flex;
+  align-items: center;
+  gap: 0.25em;
 }
 
 .review-simple-modal .modal-content h2:first-child {

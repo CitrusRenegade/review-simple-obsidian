@@ -1,11 +1,26 @@
 import { Notice, Plugin, TFile } from "obsidian";
 import { DEFAULT_SETTINGS, ReviewSettings, ReviewSettingTab } from "./settings";
-import { ReviewStatusBar } from "./statusbar";
+import { DueCounterStatusBar, ReviewStatusBar } from "./statusbar";
 import { getEffectiveInterval, pickRandomDue } from "./review";
 
 export default class ReviewPlugin extends Plugin {
   settings!: ReviewSettings;
   private statusBar!: ReviewStatusBar;
+  private dueCounter: DueCounterStatusBar | null = null;
+
+  private openRandomDue(): void {
+    const file = pickRandomDue(this.app, this.settings);
+    if (!file) {
+      new Notice("No notes due for review");
+      return;
+    }
+    this.app.workspace.getLeaf(false).openFile(file);
+  }
+
+  private updateAll(): void {
+    this.statusBar.update(this.app.workspace.getActiveFile());
+    this.dueCounter?.update();
+  }
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -19,17 +34,20 @@ export default class ReviewPlugin extends Plugin {
       () => this.settings
     );
 
+    if (this.settings.showDueCounter) {
+      const counterEl = this.addStatusBarItem();
+      this.dueCounter = new DueCounterStatusBar(
+        counterEl,
+        this.app,
+        () => this.settings,
+        () => this.openRandomDue()
+      );
+    }
+
     this.addCommand({
       id: "open-random",
       name: "Open random note for review",
-      callback: () => {
-        const file = pickRandomDue(this.app, this.settings);
-        if (!file) {
-          new Notice("No notes due for review");
-          return;
-        }
-        this.app.workspace.getLeaf(false).openFile(file);
-      },
+      callback: () => this.openRandomDue(),
     });
 
     this.addCommand({
@@ -51,7 +69,7 @@ export default class ReviewPlugin extends Plugin {
           fm[this.settings.frontmatterReviewedKey] = today;
         });
         new Notice("Marked as reviewed");
-        this.statusBar.update(file);
+        this.updateAll();
       },
     });
 
@@ -67,10 +85,21 @@ export default class ReviewPlugin extends Plugin {
         if (active && file.path === active.path) {
           this.statusBar.update(file);
         }
+        this.dueCounter?.update();
       })
     );
 
-    this.statusBar.update(this.app.workspace.getActiveFile());
+    this.registerEvent(
+      this.app.vault.on("create", () => this.dueCounter?.update())
+    );
+    this.registerEvent(
+      this.app.vault.on("delete", () => this.dueCounter?.update())
+    );
+    this.registerEvent(
+      this.app.vault.on("rename", () => this.dueCounter?.update())
+    );
+
+    this.app.workspace.onLayoutReady(() => this.updateAll());
   }
 
   async loadSettings(): Promise<void> {

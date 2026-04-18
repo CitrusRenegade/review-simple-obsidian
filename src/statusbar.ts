@@ -1,6 +1,11 @@
-import { App, Notice, TFile } from "obsidian";
+import { App, Notice, TFile, setIcon } from "obsidian";
 import { ReviewSettings } from "./settings";
-import { getEffectiveInterval, getLastReviewed, isDue } from "./review";
+import {
+  countDue,
+  getEffectiveInterval,
+  getLastReviewed,
+  isDue,
+} from "./review";
 import { ConfirmReviewModal } from "./modal";
 
 function formatDate(d: Date): string {
@@ -71,5 +76,40 @@ export class ReviewStatusBar {
         this.update(file);
       });
     }).open();
+  }
+}
+
+export class DueCounterStatusBar {
+  private el: HTMLElement;
+  private app: App;
+  private getSettings: () => ReviewSettings;
+  private countEl: HTMLElement;
+
+  constructor(
+    statusBarEl: HTMLElement,
+    app: App,
+    getSettings: () => ReviewSettings,
+    onClick: () => void
+  ) {
+    this.el = statusBarEl;
+    this.app = app;
+    this.getSettings = getSettings;
+
+    this.el.addClass("review-due-counter");
+    this.el.setAttribute("data-tooltip-position", "top");
+    const iconEl = this.el.createSpan({ cls: "review-due-counter-icon" });
+    setIcon(iconEl, "clipboard-clock");
+    this.countEl = this.el.createSpan({ cls: "review-due-counter-text" });
+    this.el.addEventListener("click", onClick);
+  }
+
+  update(): void {
+    const n = countDue(this.app, this.getSettings());
+    this.countEl.setText(String(n));
+    this.el.setAttribute(
+      "aria-label",
+      `${n} notes due for review across vault`
+    );
+    this.el.style.display = n === 0 ? "none" : "";
   }
 }
