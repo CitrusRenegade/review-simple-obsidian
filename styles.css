@@ -1,5 +1,6 @@
 .review-status-bar {
   cursor: pointer;
+  order: -1;
 }
 
 .review-simple-modal .modal-content h2:first-child {

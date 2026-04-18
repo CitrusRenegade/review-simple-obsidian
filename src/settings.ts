@@ -105,6 +105,8 @@ export class ReviewSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
         text.inputEl.rows = 5;
+        text.inputEl.style.minHeight = "5em";
+        text.inputEl.style.minWidth = "24ch";
       });
 
     new Setting(containerEl)
@@ -137,6 +139,8 @@ export class ReviewSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
         text.inputEl.rows = 5;
+        text.inputEl.style.minHeight = "5em";
+        text.inputEl.style.minWidth = "24ch";
       });
 
     containerEl.createEl("h3", { text: "Advanced" });
