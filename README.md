@@ -13,6 +13,10 @@ Obsidian plugin for periodic note review. Tracks the last review date in each no
 - Data stored in note frontmatter — no external database.
 - Vault-wide counter of notes currently due for review.
 
+
+<video src="https://github.com/user-attachments/assets/0aa6c179-e7a6-43a1-a914-7f7c487f79d9">
+
+
 ## Quick start
 
 1. Install (see below).
