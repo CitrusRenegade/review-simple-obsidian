@@ -2,7 +2,7 @@
 
 Obsidian plugin for periodic note review. Tracks the last review date in each note's frontmatter and shows which notes are overdue.
 
-<img src="docs/assets/hero.png" alt="Review Simple commands in the palette" width="650">
+<img src="docs/assets/hero.jpg" alt="Review Simple commands in the palette" width="650">
 
 ## Features
 
