@@ -14,6 +14,7 @@ export interface ReviewSettings {
   excludedFolders: string[];
   includedFolders: string[];
   folderIntervals: FolderInterval[];
+  showReviewStatus: boolean;
   showDueCounter: boolean;
   frontmatterIntervalKey: string;
   frontmatterReviewedKey: string;
@@ -25,6 +26,7 @@ export const DEFAULT_SETTINGS: ReviewSettings = {
   excludedFolders: [],
   includedFolders: [],
   folderIntervals: [],
+  showReviewStatus: true,
   showDueCounter: true,
   frontmatterIntervalKey: "review_interval",
   frontmatterReviewedKey: "reviewed",
@@ -144,6 +146,27 @@ export class ReviewSettingTab extends PluginSettingTab {
         text.inputEl.style.minHeight = "5em";
         text.inputEl.style.minWidth = "24ch";
       });
+
+    new Setting(containerEl)
+      .setName("Show review status in status bar")
+      .setDesc(
+        createFragment((el) => {
+          el.appendText(
+            "Shows per-file review indicator (last review date / due / not reviewed) for the active note."
+          );
+          el.createEl("br");
+          el.appendText("NOTE: Restart Obsidian after toggling for changes to apply.");
+        })
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showReviewStatus)
+          .onChange(async (value) => {
+            this.plugin.settings.showReviewStatus = value;
+            await this.plugin.saveSettings();
+            new Notice("To apply statusbar changes please restart Obsidian.");
+          })
+      );
 
     new Setting(containerEl)
       .setName("Show due counter in status bar")

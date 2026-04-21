@@ -5,7 +5,7 @@ import { getEffectiveInterval, pickRandomDue } from "./review";
 
 export default class ReviewPlugin extends Plugin {
   settings!: ReviewSettings;
-  private statusBar!: ReviewStatusBar;
+  private statusBar: ReviewStatusBar | null = null;
   private dueCounter: DueCounterStatusBar | null = null;
 
   private openRandomDue(): void {
@@ -18,7 +18,7 @@ export default class ReviewPlugin extends Plugin {
   }
 
   private updateAll(): void {
-    this.statusBar.update(this.app.workspace.getActiveFile());
+    this.statusBar?.update(this.app.workspace.getActiveFile());
     this.dueCounter?.update();
   }
 
@@ -27,12 +27,14 @@ export default class ReviewPlugin extends Plugin {
 
     this.addSettingTab(new ReviewSettingTab(this.app, this));
 
-    const statusBarEl = this.addStatusBarItem();
-    this.statusBar = new ReviewStatusBar(
-      statusBarEl,
-      this.app,
-      () => this.settings
-    );
+    if (this.settings.showReviewStatus) {
+      const statusBarEl = this.addStatusBarItem();
+      this.statusBar = new ReviewStatusBar(
+        statusBarEl,
+        this.app,
+        () => this.settings
+      );
+    }
 
     if (this.settings.showDueCounter) {
       const counterEl = this.addStatusBarItem();
@@ -75,7 +77,7 @@ export default class ReviewPlugin extends Plugin {
 
     this.registerEvent(
       this.app.workspace.on("active-leaf-change", () => {
-        this.statusBar.update(this.app.workspace.getActiveFile());
+        this.statusBar?.update(this.app.workspace.getActiveFile());
       })
     );
 
@@ -83,7 +85,7 @@ export default class ReviewPlugin extends Plugin {
       this.app.metadataCache.on("changed", (file: TFile) => {
         const active = this.app.workspace.getActiveFile();
         if (active && file.path === active.path) {
-          this.statusBar.update(file);
+          this.statusBar?.update(file);
         }
         this.dueCounter?.update();
       })

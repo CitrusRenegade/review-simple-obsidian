@@ -108,7 +108,7 @@ export class DueCounterStatusBar {
     this.countEl.setText(String(n));
     this.el.setAttribute(
       "aria-label",
-      `${n} notes due for review across vault`
+      `${n} notes due for review across vault. Click to open random one.`
     );
     this.el.style.display = n === 0 ? "none" : "";
   }
