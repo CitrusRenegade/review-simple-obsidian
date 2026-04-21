@@ -14,7 +14,7 @@ Obsidian plugin for periodic note review. Tracks the last review date in each no
 - Vault-wide counter of notes currently due for review.
 
 
-<video src="https://github.com/user-attachments/assets/0aa6c179-e7a6-43a1-a914-7f7c487f79d9">
+<video src="https://github.com/user-attachments/assets/0aa6c179-e7a6-43a1-a914-7f7c487f79d9" controls></video>
 
 
 ## Quick start
