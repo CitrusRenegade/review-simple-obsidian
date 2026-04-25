@@ -16,6 +16,8 @@ jobs:
         with:
           fetch-depth: 0
 
+      - run: git fetch --tags --force
+
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
