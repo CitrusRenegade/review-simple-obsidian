@@ -61,7 +61,7 @@ export class ReviewSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Excluded / Included folders")
+      .setName("Excluded / included folders")
       .setDesc(
         createFragment((el) => {
           el.appendText("OFF — listed folders are excluded from review.");
@@ -120,7 +120,7 @@ export class ReviewSettingTab extends PluginSettingTab {
       )
       .addTextArea((text) => {
         text
-          .setPlaceholder("Daily Notes,90\nWork/Projects,30")
+          .setPlaceholder("Notes,90\nProjects/Portfolio,30")
           .setValue(
             this.plugin.settings.folderIntervals
               .map((r) => `${r.folder},${r.days}`)

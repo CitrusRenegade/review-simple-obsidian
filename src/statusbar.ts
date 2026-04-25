@@ -35,7 +35,7 @@ export class ReviewStatusBar {
     this.currentFile = file;
 
     if (!file || file.extension !== "md") {
-      this.el.style.display = "none";
+      this.el.addClass("review-hidden");
       return;
     }
 
@@ -43,15 +43,15 @@ export class ReviewStatusBar {
     const interval = getEffectiveInterval(file, this.app, settings);
 
     if (interval === null) {
-      this.el.style.display = "none";
+      this.el.addClass("review-hidden");
       return;
     }
 
-    this.el.style.display = "";
+    this.el.removeClass("review-hidden");
     const last = getLastReviewed(file, this.app, settings);
 
     if (!last) {
-      this.el.setText("⚠ not reviewed");
+      this.el.setText("⚠ Not reviewed");
     } else if (isDue(file, this.app, settings)) {
       this.el.setText(`⚠ due · ${formatDate(last)}`);
     } else {
@@ -69,12 +69,15 @@ export class ReviewStatusBar {
 
     new ConfirmReviewModal(this.app, file, () => {
       const today = formatDate(new Date());
-      this.app.fileManager.processFrontMatter(file, (fm) => {
-        fm[settings.frontmatterReviewedKey] = today;
-      }).then(() => {
-        new Notice("Marked as reviewed");
-        this.update(file);
-      });
+      this.app.fileManager
+        .processFrontMatter(file, (fm) => {
+          fm[settings.frontmatterReviewedKey] = today;
+        })
+        .then(() => {
+          new Notice("Marked as reviewed");
+          this.update(file);
+        })
+        .catch((e) => console.error("Failed to mark as reviewed:", e));
     }).open();
   }
 }
@@ -110,6 +113,6 @@ export class DueCounterStatusBar {
       "aria-label",
       `${n} notes due for review across vault. Click to open random one.`
     );
-    this.el.style.display = n === 0 ? "none" : "";
+    this.el.toggleClass("review-hidden", n === 0);
   }
 }

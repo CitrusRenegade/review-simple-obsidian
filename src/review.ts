@@ -70,7 +70,9 @@ export function getLastReviewed(
   const fm = getFrontmatter(file, app);
   const val = fm[settings.frontmatterReviewedKey];
   if (!val) return null;
-  const d = new Date(String(val));
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val !== "string" && typeof val !== "number") return null;
+  const d = new Date(val);
   return isNaN(d.getTime()) ? null : d;
 }
 

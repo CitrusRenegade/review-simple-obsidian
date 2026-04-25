@@ -14,7 +14,7 @@ export default class ReviewPlugin extends Plugin {
       new Notice("No notes due for review");
       return;
     }
-    this.app.workspace.getLeaf(false).openFile(file);
+    void this.app.workspace.getLeaf(false).openFile(file);
   }
 
   private updateAll(): void {
@@ -58,7 +58,7 @@ export default class ReviewPlugin extends Plugin {
       callback: async () => {
         const file = this.app.workspace.getActiveFile();
         if (!file || file.extension !== "md") {
-          new Notice("No active markdown file");
+          new Notice("No active Markdown file");
           return;
         }
         const interval = getEffectiveInterval(file, this.app, this.settings);

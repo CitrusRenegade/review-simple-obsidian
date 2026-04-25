@@ -19,3 +19,7 @@
   min-height: 5em;
   min-width: 24ch;
 }
+
+.review-hidden {
+  display: none;
+}
