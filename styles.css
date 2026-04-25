@@ -14,3 +14,8 @@
 .review-simple-modal .modal-content h2:first-child {
   margin-top: 0;
 }
+
+.review-settings-textarea {
+  min-height: 5em;
+  min-width: 24ch;
+}

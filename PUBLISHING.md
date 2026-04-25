@@ -28,11 +28,11 @@
 2. Добавить запись в `community-plugins.json`:
    ```json
    {
-     "id": "obsd-review",
-     "name": "Review",
-     "author": "...",
-     "description": "Periodic note review with status bar indicator",
-     "repo": "username/obsd-review"
+     "id": "review-simple",
+     "name": "Review Simple",
+     "author": "CitrusRenegade",
+     "description": "Revisit notes on a schedule you define.",
+     "repo": "CitrusRenegade/review-simple-obsidian"
    }
    ```
 3. Открыть PR в `obsidian-md/obsidian-releases`

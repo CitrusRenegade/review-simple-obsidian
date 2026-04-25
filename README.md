@@ -1,6 +1,6 @@
 # Review Simple
 
-Obsidian plugin for periodic note review. Tracks the last review date in each note's frontmatter and shows which notes are overdue.
+Helps you reread and refine your notes on a recurring schedule. Last review date lives in each note's frontmatter.
 
 <img src="docs/assets/hero.jpg" alt="Review Simple commands in the palette" width="650">
 
@@ -19,11 +19,13 @@ Obsidian plugin for periodic note review. Tracks the last review date in each no
 
 ## Quick start
 
-1. Install (see below).
-2. Open a note, run `Review Simple: Mark current note as reviewed`.
-3. Status bar shows `✓ <today>`. The note is now tracked.
+1. Install with BRAT → `CitrusRenegade/review-simple-obsidian`.
+2. Set folders to review and mode that fits your needs.
+3. Choose a review interval (in days).
+4. Reread to refine. Open a random due note via command palette, or by clicking the counter in the status bar.
+5. Mark it reviewed the same way — command palette or click the per-note indicator.
 
-After the interval (45 days by default), the indicator switches to `⚠ due` and the counter increments.
+Pending submission to the Community Plugins directory.
 
 ## Intervals
 
@@ -49,15 +51,6 @@ review_interval: 14
 
 Clicking the status bar items triggers the same actions.
 
-## Installation
-
-Via [BRAT](https://github.com/TfTHacker/obsidian42-brat):
-
-1. Install BRAT from Community Plugins.
-2. BRAT settings → *Add Beta Plugin* → `CitrusRenegade/review-simple-obsidian`.
-3. Enable *Review Simple* in Community Plugins.
-
-Community Plugin directory submission is pending.
 
 ## Configuration
 
@@ -74,4 +67,4 @@ Settings → Review Simple:
 - Status bar items are not visible on Obsidian mobile. Commands work everywhere.
 - All data is stored in note frontmatter and created after first review.
 
-*Inspired by the "Reviewed by .. on .." field like on WebMD. Saw this more in some knowledge bases, but cant remeber any specific.*
+*Inspired by the "Reviewed by ... on ..." field seen on WebMD. The "last reviewed" stamp shows up on other docs sites too — none come to mind by name.*
