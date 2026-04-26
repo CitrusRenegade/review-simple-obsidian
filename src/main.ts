@@ -38,6 +38,7 @@ export default class ReviewPlugin extends Plugin {
 
     if (this.settings.showReviewStatus) {
       const statusBarEl = this.addStatusBarItem();
+      this.register(() => statusBarEl.remove());
       this.statusBar = new ReviewStatusBar(
         statusBarEl,
         this.app,
@@ -47,6 +48,7 @@ export default class ReviewPlugin extends Plugin {
 
     if (this.settings.showDueCounter) {
       const counterEl = this.addStatusBarItem();
+      this.register(() => counterEl.remove());
       this.dueCounter = new DueCounterStatusBar(
         counterEl,
         this.app,
