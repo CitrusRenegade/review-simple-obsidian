@@ -22,6 +22,15 @@ export default class ReviewPlugin extends Plugin {
     this.dueCounter?.update();
   }
 
+  private async markReviewed(file: TFile): Promise<void> {
+    const today = new Date().toISOString().slice(0, 10);
+    await this.app.fileManager.processFrontMatter(file, (fm) => {
+      fm[this.settings.frontmatterReviewedKey] = today;
+    });
+    new Notice("Marked as reviewed");
+    this.updateAll();
+  }
+
   async onload(): Promise<void> {
     await this.loadSettings();
 
@@ -55,23 +64,16 @@ export default class ReviewPlugin extends Plugin {
     this.addCommand({
       id: "mark-current",
       name: "Mark current note as reviewed",
-      callback: async () => {
+      checkCallback: (checking: boolean) => {
         const file = this.app.workspace.getActiveFile();
-        if (!file || file.extension !== "md") {
-          new Notice("No active Markdown file");
-          return;
+        if (!file || file.extension !== "md") return false;
+        if (getEffectiveInterval(file, this.app, this.settings) === null) {
+          return false;
         }
-        const interval = getEffectiveInterval(file, this.app, this.settings);
-        if (interval === null) {
-          new Notice("This note is not tracked for review");
-          return;
+        if (!checking) {
+          void this.markReviewed(file);
         }
-        const today = new Date().toISOString().slice(0, 10);
-        await this.app.fileManager.processFrontMatter(file, (fm) => {
-          fm[this.settings.frontmatterReviewedKey] = today;
-        });
-        new Notice("Marked as reviewed");
-        this.updateAll();
+        return true;
       },
     });
 

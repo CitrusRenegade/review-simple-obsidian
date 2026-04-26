@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting, normalizePath } from "obsidian";
 import type ReviewPlugin from "./main";
 
 export interface FolderInterval {
@@ -99,8 +99,9 @@ export class ReviewSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             const parsed = value
               .split("\n")
-              .map((s) => s.trim().replace(/\/+$/, ""))
-              .filter(Boolean);
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((s) => normalizePath(s));
             if (isIncluded) {
               this.plugin.settings.includedFolders = parsed;
             } else {
@@ -134,10 +135,10 @@ export class ReviewSettingTab extends PluginSettingTab {
               .flatMap((line) => {
                 const idx = line.lastIndexOf(",");
                 if (idx < 1) return [];
-                const folder = line.slice(0, idx).trim().replace(/\/+$/, "");
+                const folder = line.slice(0, idx).trim();
                 const days = parseInt(line.slice(idx + 1));
                 if (!folder || isNaN(days) || days <= 0) return [];
-                return [{ folder, days }];
+                return [{ folder: normalizePath(folder), days }];
               });
             await this.plugin.saveSettings();
           });
