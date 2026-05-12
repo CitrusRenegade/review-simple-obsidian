@@ -62,6 +62,22 @@ Settings → Review Simple:
 - Toggles to hide the per-note indicator or the due counter.
 - Advanced: customize frontmatter keys (`reviewed`, `review_interval`).
 
+## Alternatives
+
+There are several Obsidian plugins and workflows for revisiting notes with their own trade-offs.
+
+- **[prncc/obsidian-repeat-plugin](https://github.com/prncc/obsidian-repeat-plugin)** - A close alternative for reviewing notes with frontmatter-driven schedules. Requires the Dataview plugin. Every note to be reviewed must have a `repeat` property. Bulk setup for existing notes is done through a separate `obsidian-scripts` workflow rather than through the plugin settings.
+
+- **[zachmueller/spaced-everything](https://github.com/zachmueller/spaced-everything)** - Implements a more opinionated workflow around spaced repetition for writing and incremental note development. Its "Onboard All Notes" feature performs a bulk frontmatter update, which may be less beginner-friendly in existing vaults. This is a broader onboarding model rather than a lightweight rule-based review workflow.
+
+- **[dartungar/obsidian-simple-note-review](https://github.com/dartungar/obsidian-simple-note-review)** - The closest conceptual alternative: it focuses on reviewing, resurfacing, and repeating ordinary notes. Requires the Dataview plugin. It uses note sets based on tags, folders, creation date, or DataviewJS queries, and keeps a persistent queue for each note set. Maintenance status: no recent release; latest GitHub release was on Apr 5, 2024.
+
+- **[Obsidian Spaced Repetition](https://github.com/st3v3nmw/obsidian-spaced-repetition)** - A mature spaced repetition plugin with a strong flashcards-first workflow. Whole-note review is supported, but the main workflow and documentation are centered around creating and reviewing flashcards.
+
+- **[ryanjamurphy/review-obsidian](https://github.com/ryanjamurphy/review-obsidian)** - Not a revisit notes workflow, just quick adds the current note to a future daily note by one, using the Natural Language Dates plugin to resolve the target date. Maintenance status: no recent release; latest GitHub release was on Dec 10, 2024.
+
+- **Powerful plugins + home-grown templates** - A similar workflow can be built with Dataview queries, custom query logic, and Templater commands for quickly marking notes as reviewed. This can be very flexible, but it also means maintaining a custom system instead of using a focused review workflow.
+
 ## Notes
 
 - Status bar items are not visible on Obsidian mobile. Commands work everywhere.
