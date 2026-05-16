@@ -121,6 +121,7 @@ export class ReviewSettingTab extends PluginSettingTab {
       )
       .addTextArea((text) => {
         text
+          // eslint-disable-next-line obsidianmd/ui/sentence-case -- technical placeholder values, not prose UI copy
           .setPlaceholder("Notes,90\nProjects/Portfolio,30")
           .setValue(
             this.plugin.settings.folderIntervals
@@ -197,6 +198,7 @@ export class ReviewSettingTab extends PluginSettingTab {
       )
       .addText((text) =>
         text
+          // eslint-disable-next-line obsidianmd/ui/sentence-case -- frontmatter keys are case-sensitive technical values
           .setPlaceholder("review_interval")
           .setValue(this.plugin.settings.frontmatterIntervalKey)
           .onChange(async (value) => {
@@ -213,6 +215,7 @@ export class ReviewSettingTab extends PluginSettingTab {
       .setDesc("Frontmatter field where the last review date is stored.")
       .addText((text) =>
         text
+          // eslint-disable-next-line obsidianmd/ui/sentence-case -- frontmatter keys are case-sensitive technical values
           .setPlaceholder("reviewed")
           .setValue(this.plugin.settings.frontmatterReviewedKey)
           .onChange(async (value) => {
