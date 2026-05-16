@@ -2,7 +2,7 @@
 
 Helps you reread and refine your notes on a recurring schedule. Last review date lives in each note's frontmatter.
 
-<img src="docs/assets/hero.jpg" alt="Review Simple commands in the palette" width="650">
+<img src=".github/assets/hero.jpg" alt="Review Simple commands in the palette" width="650">
 
 ## Features
 
