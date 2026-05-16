@@ -18,7 +18,7 @@ export default class ReviewPlugin extends Plugin {
     void this.app.workspace.getLeaf(false).openFile(file);
   }
 
-  private updateAll(): void {
+  updateAll(): void {
     this.statusBar?.update(this.app.workspace.getActiveFile());
     this.dueCounter?.update();
   }
@@ -37,26 +37,22 @@ export default class ReviewPlugin extends Plugin {
 
     this.addSettingTab(new ReviewSettingTab(this.app, this));
 
-    if (this.settings.showReviewStatus) {
-      const statusBarEl = this.addStatusBarItem();
-      this.register(() => statusBarEl.remove());
-      this.statusBar = new ReviewStatusBar(
-        statusBarEl,
-        this.app,
-        () => this.settings
-      );
-    }
+    const statusBarEl = this.addStatusBarItem();
+    this.register(() => statusBarEl.remove());
+    this.statusBar = new ReviewStatusBar(
+      statusBarEl,
+      this.app,
+      () => this.settings
+    );
 
-    if (this.settings.showDueCounter) {
-      const counterEl = this.addStatusBarItem();
-      this.register(() => counterEl.remove());
-      this.dueCounter = new DueCounterStatusBar(
-        counterEl,
-        this.app,
-        () => this.settings,
-        () => this.openRandomDue()
-      );
-    }
+    const counterEl = this.addStatusBarItem();
+    this.register(() => counterEl.remove());
+    this.dueCounter = new DueCounterStatusBar(
+      counterEl,
+      this.app,
+      () => this.settings,
+      () => this.openRandomDue()
+    );
 
     this.addCommand({
       id: "open-random",

@@ -34,13 +34,18 @@ export class ReviewStatusBar {
 
   update(file: TFile | null): void {
     this.currentFile = file;
+    const settings = this.getSettings();
+
+    if (!settings.showReviewStatus) {
+      this.el.addClass("review-hidden");
+      return;
+    }
 
     if (!file || file.extension !== "md") {
       this.el.addClass("review-hidden");
       return;
     }
 
-    const settings = this.getSettings();
     const interval = getEffectiveInterval(file, this.app, settings);
 
     if (interval === null) {
@@ -108,7 +113,13 @@ export class DueCounterStatusBar {
   }
 
   update(): void {
-    const n = countDue(this.app, this.getSettings());
+    const settings = this.getSettings();
+    if (!settings.showDueCounter) {
+      this.el.addClass("review-hidden");
+      return;
+    }
+
+    const n = countDue(this.app, settings);
     this.countEl.setText(String(n));
     this.el.setAttribute(
       "aria-label",

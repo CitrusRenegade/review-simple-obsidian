@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting, normalizePath } from "obsidian";
+import { App, PluginSettingTab, Setting, normalizePath } from "obsidian";
 import type ReviewPlugin from "./main";
 
 export interface FolderInterval {
@@ -230,13 +230,7 @@ export class ReviewSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Show review status in status bar")
       .setDesc(
-        createFragment((el) => {
-          el.appendText(
-            "Shows per-file review indicator (last review date / due / not reviewed) for the active note."
-          );
-          el.createEl("br");
-          el.appendText("NOTE: Restart Obsidian after toggling for changes to apply.");
-        })
+        "Shows per-file review indicator (last review date / due / not reviewed) for the active note."
       )
       .addToggle((toggle) =>
         toggle
@@ -244,20 +238,14 @@ export class ReviewSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.showReviewStatus = value;
             await this.plugin.saveSettings();
-            new Notice("To apply statusbar changes please restart Obsidian.");
+            this.plugin.updateAll();
           })
       );
 
     new Setting(containerEl)
       .setName("Show due counter in status bar")
       .setDesc(
-        createFragment((el) => {
-          el.appendText(
-            "Shows total count of notes due for review across vault, next to the current-note indicator."
-          );
-          el.createEl("br");
-          el.appendText("NOTE: Restart Obsidian after toggling for changes to apply.");
-        })
+        "Shows total count of notes due for review across vault, next to the current-note indicator."
       )
       .addToggle((toggle) =>
         toggle
@@ -265,7 +253,7 @@ export class ReviewSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.showDueCounter = value;
             await this.plugin.saveSettings();
-            new Notice("To apply statusbar changes please restart Obsidian.");
+            this.plugin.updateAll();
           })
       );
 
