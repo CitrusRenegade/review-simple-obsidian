@@ -19,13 +19,13 @@ Helps you reread and refine your notes on a recurring schedule. Last review date
 
 ## Quick start
 
-1. Install with BRAT → `CitrusRenegade/review-simple-obsidian`.
+1. Install **Review Simple** from Obsidian's Community Plugins directory.
 2. Set folders to review and mode that fits your needs.
 3. Choose a review interval (in days).
 4. Reread to refine. Open a random due note via command palette, or by clicking the counter in the status bar.
 5. Mark it reviewed the same way — command palette or click the per-note indicator.
 
-Pending submission to the Community Plugins directory.
+For development builds, install `CitrusRenegade/review-simple-obsidian` through BRAT from the `dev` branch.
 
 ## Intervals
 
@@ -78,9 +78,4 @@ There are several Obsidian plugins and workflows for revisiting notes with their
 
 <ins>**Powerful plugins + home-grown templates**</ins> - A similar workflow can be built with Dataview queries, custom query logic, and Templater commands for quickly marking notes as reviewed. This can be very flexible, but it also means maintaining a custom system instead of using a focused review workflow.
 
-## Notes
-
-- Status bar items are not visible on Obsidian mobile. Commands work everywhere.
-- All data is stored in note frontmatter and created after first review.
-
-*Inspired by the "Reviewed by ... on ..." field seen on WebMD. The "last reviewed" stamp shows up on other docs sites too — none come to mind by name.*
+*Inspired by the "Reviewed by ... on ..." field on WebMD and other.*
