@@ -5,4 +5,6 @@ data.json
 .DS_Store
 CLAUDE.md
 .claude/
+AGENTS.md
+.agents/
 .hotreload
