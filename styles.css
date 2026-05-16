@@ -6,9 +6,22 @@
 .review-due-counter {
   cursor: pointer;
   order: -1;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.25em;
+}
+
+.review-due-counter-icon {
+  --icon-size: 1em;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.review-due-counter-icon svg {
+  display: block;
+  width: 1em;
+  height: 1em;
 }
 
 .review-simple-modal .modal-content h2:first-child {
