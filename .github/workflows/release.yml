@@ -30,8 +30,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${GITHUB_REF#refs/tags/}"
+          release_args=()
+          if [[ "$tag" == *-* ]]; then
+            release_args+=(--prerelease)
+          fi
+
           notes=$(git tag -l --format='%(contents)' "$tag")
           gh release create "$tag" \
+            "${release_args[@]}" \
             --title "$tag" \
             --notes "$notes" \
             main.js manifest.json styles.css
