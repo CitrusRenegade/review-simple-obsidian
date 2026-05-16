@@ -1,7 +1,8 @@
 import { Notice, Plugin, TFile } from "obsidian";
-import { DEFAULT_SETTINGS, ReviewSettings, ReviewSettingTab } from "./settings";
+import { ReviewSettings, ReviewSettingTab, loadReviewSettings } from "./settings";
 import { DueCounterStatusBar, ReviewStatusBar } from "./statusbar";
 import { getEffectiveInterval, pickRandomDue } from "./review";
+import { setStringFrontmatter } from "./frontmatter";
 
 export default class ReviewPlugin extends Plugin {
   settings!: ReviewSettings;
@@ -25,7 +26,7 @@ export default class ReviewPlugin extends Plugin {
   private async markReviewed(file: TFile): Promise<void> {
     const today = new Date().toISOString().slice(0, 10);
     await this.app.fileManager.processFrontMatter(file, (fm) => {
-      fm[this.settings.frontmatterReviewedKey] = today;
+      setStringFrontmatter(fm, this.settings.frontmatterReviewedKey, today);
     });
     new Notice("Marked as reviewed");
     this.updateAll();
@@ -109,7 +110,7 @@ export default class ReviewPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.settings = loadReviewSettings(await this.loadData());
   }
 
   async saveSettings(): Promise<void> {

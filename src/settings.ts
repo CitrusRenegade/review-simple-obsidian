@@ -32,6 +32,86 @@ export const DEFAULT_SETTINGS: ReviewSettings = {
   frontmatterReviewedKey: "reviewed",
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function asPositiveNumber(value: unknown, fallback: number): number {
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+      ? parseFloat(value)
+      : NaN;
+  return !isNaN(n) && n > 0 ? n : fallback;
+}
+
+function asBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function asNonEmptyString(value: unknown, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : fallback;
+}
+
+function asFolderFilterMode(value: unknown): FolderFilterMode {
+  return value === "included" || value === "excluded"
+    ? value
+    : DEFAULT_SETTINGS.folderFilterMode;
+}
+
+function asPathList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => normalizePath(item));
+}
+
+function asFolderIntervals(value: unknown): FolderInterval[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!isRecord(item)) return [];
+    const folder = asNonEmptyString(item.folder, "");
+    const days = asPositiveNumber(item.days, NaN);
+    if (!folder || isNaN(days)) return [];
+    return [{ folder: normalizePath(folder), days }];
+  });
+}
+
+export function loadReviewSettings(data: unknown): ReviewSettings {
+  const raw = isRecord(data) ? data : {};
+  return {
+    globalIntervalDays: asPositiveNumber(
+      raw.globalIntervalDays,
+      DEFAULT_SETTINGS.globalIntervalDays
+    ),
+    folderFilterMode: asFolderFilterMode(raw.folderFilterMode),
+    excludedFolders: asPathList(raw.excludedFolders),
+    includedFolders: asPathList(raw.includedFolders),
+    folderIntervals: asFolderIntervals(raw.folderIntervals),
+    showReviewStatus: asBoolean(
+      raw.showReviewStatus,
+      DEFAULT_SETTINGS.showReviewStatus
+    ),
+    showDueCounter: asBoolean(
+      raw.showDueCounter,
+      DEFAULT_SETTINGS.showDueCounter
+    ),
+    frontmatterIntervalKey: asNonEmptyString(
+      raw.frontmatterIntervalKey,
+      DEFAULT_SETTINGS.frontmatterIntervalKey
+    ),
+    frontmatterReviewedKey: asNonEmptyString(
+      raw.frontmatterReviewedKey,
+      DEFAULT_SETTINGS.frontmatterReviewedKey
+    ),
+  };
+}
+
 export class ReviewSettingTab extends PluginSettingTab {
   plugin: ReviewPlugin;
 

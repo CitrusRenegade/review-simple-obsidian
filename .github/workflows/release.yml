@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  attestations: write
+  id-token: write
 
 jobs:
   release:
@@ -25,6 +27,13 @@ jobs:
       - run: npm ci
 
       - run: npm run build
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
 
       - env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -7,6 +7,7 @@ import {
   isDue,
 } from "./review";
 import { ConfirmReviewModal } from "./modal";
+import { setStringFrontmatter } from "./frontmatter";
 
 function formatDate(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -71,7 +72,7 @@ export class ReviewStatusBar {
       const today = formatDate(new Date());
       this.app.fileManager
         .processFrontMatter(file, (fm) => {
-          fm[settings.frontmatterReviewedKey] = today;
+          setStringFrontmatter(fm, settings.frontmatterReviewedKey, today);
         })
         .then(() => {
           new Notice("Marked as reviewed");
