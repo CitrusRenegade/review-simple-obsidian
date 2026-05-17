@@ -49,7 +49,12 @@ review_interval: 14
 - `Open random note for review` — opens a random note that's currently due.
 - `Mark current note as reviewed` — writes today's date to frontmatter.
 
-Clicking the status bar items triggers the same actions.
+## UI actions
+
+- Clicking the per-note status bar **review indicator** marks the active note as reviewed today. This status is shown when the active note is included in review.
+- Clicking the **due counter** status bar icon opens a random due note. The counter is hidden when there are no due notes.
+- Clicking the **ribbon icon** opens a random due note.
+- The **folder context menu** can exclude a folder from review when folder filtering is in **excluded** mode.
 
 
 ## Configuration
