@@ -1,4 +1,12 @@
-import { Notice, Plugin, TFile } from "obsidian";
+import {
+  Menu,
+  Notice,
+  Plugin,
+  TAbstractFile,
+  TFile,
+  TFolder,
+  normalizePath,
+} from "obsidian";
 import { ReviewSettings, ReviewSettingTab, loadReviewSettings } from "./settings";
 import { DueCounterStatusBar, ReviewStatusBar } from "./statusbar";
 import { getEffectiveInterval, pickRandomDue } from "./review";
@@ -8,6 +16,7 @@ export default class ReviewPlugin extends Plugin {
   settings!: ReviewSettings;
   private statusBar: ReviewStatusBar | null = null;
   private dueCounter: DueCounterStatusBar | null = null;
+  private ribbonIconEl: HTMLElement | null = null;
 
   private openRandomDue(): void {
     const file = pickRandomDue(this.app, this.settings);
@@ -23,6 +32,19 @@ export default class ReviewPlugin extends Plugin {
     this.dueCounter?.update();
   }
 
+  updateRibbonIcon(): void {
+    if (this.settings.showRibbonIcon && !this.ribbonIconEl) {
+      this.ribbonIconEl = this.addRibbonIcon(
+        "clipboard-clock",
+        "Open random note for review",
+        () => this.openRandomDue()
+      );
+    } else if (!this.settings.showRibbonIcon && this.ribbonIconEl) {
+      this.ribbonIconEl.remove();
+      this.ribbonIconEl = null;
+    }
+  }
+
   private async markReviewed(file: TFile): Promise<void> {
     const today = new Date().toISOString().slice(0, 10);
     await this.app.fileManager.processFrontMatter(file, (fm) => {
@@ -32,10 +54,40 @@ export default class ReviewPlugin extends Plugin {
     this.updateAll();
   }
 
+  private addFileMenuItems(menu: Menu, file: TAbstractFile): void {
+    if (!(file instanceof TFolder)) return;
+    if (this.settings.folderFilterMode !== "excluded") return;
+
+    const folderPath = normalizePath(file.path);
+    if (!folderPath || this.settings.excludedFolders.includes(folderPath)) {
+      return;
+    }
+
+    menu.addItem((item) => {
+      item
+        .setTitle("Exclude folder from review")
+        .setIcon("folder-x")
+        .onClick(() => {
+          void this.excludeFolderFromReview(folderPath);
+        });
+    });
+  }
+
+  private async excludeFolderFromReview(folderPath: string): Promise<void> {
+    if (this.settings.folderFilterMode !== "excluded") return;
+    if (this.settings.excludedFolders.includes(folderPath)) return;
+
+    this.settings.excludedFolders = [...this.settings.excludedFolders, folderPath];
+    await this.saveSettings();
+    this.updateAll();
+    new Notice("Folder excluded from review");
+  }
+
   async onload(): Promise<void> {
     await this.loadSettings();
 
     this.addSettingTab(new ReviewSettingTab(this.app, this));
+    this.updateRibbonIcon();
 
     const statusBarEl = this.addStatusBarItem();
     this.register(() => statusBarEl.remove());
@@ -79,6 +131,12 @@ export default class ReviewPlugin extends Plugin {
     this.registerEvent(
       this.app.workspace.on("active-leaf-change", () => {
         this.statusBar?.update(this.app.workspace.getActiveFile());
+      })
+    );
+
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        this.addFileMenuItems(menu, file);
       })
     );
 

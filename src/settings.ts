@@ -16,6 +16,7 @@ export interface ReviewSettings {
   folderIntervals: FolderInterval[];
   showReviewStatus: boolean;
   showDueCounter: boolean;
+  showRibbonIcon: boolean;
   frontmatterIntervalKey: string;
   frontmatterReviewedKey: string;
 }
@@ -28,6 +29,7 @@ export const DEFAULT_SETTINGS: ReviewSettings = {
   folderIntervals: [],
   showReviewStatus: true,
   showDueCounter: true,
+  showRibbonIcon: false,
   frontmatterIntervalKey: "review_interval",
   frontmatterReviewedKey: "reviewed",
 };
@@ -101,6 +103,10 @@ export function loadReviewSettings(data: unknown): ReviewSettings {
       raw.showDueCounter,
       DEFAULT_SETTINGS.showDueCounter
     ),
+    showRibbonIcon: asBoolean(
+      raw.showRibbonIcon,
+      DEFAULT_SETTINGS.showRibbonIcon
+    ),
     frontmatterIntervalKey: asNonEmptyString(
       raw.frontmatterIntervalKey,
       DEFAULT_SETTINGS.frontmatterIntervalKey
@@ -114,10 +120,29 @@ export function loadReviewSettings(data: unknown): ReviewSettings {
 
 export class ReviewSettingTab extends PluginSettingTab {
   plugin: ReviewPlugin;
+  private refreshTimeout: number | null = null;
 
   constructor(app: App, plugin: ReviewPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+  }
+
+  private refreshReviewState(): void {
+    if (this.refreshTimeout !== null) {
+      activeWindow.clearTimeout(this.refreshTimeout);
+      this.refreshTimeout = null;
+    }
+    this.plugin.updateAll();
+  }
+
+  private scheduleReviewStateRefresh(): void {
+    if (this.refreshTimeout !== null) {
+      activeWindow.clearTimeout(this.refreshTimeout);
+    }
+    this.refreshTimeout = activeWindow.setTimeout(() => {
+      this.refreshTimeout = null;
+      this.plugin.updateAll();
+    }, 500);
   }
 
   display(): void {
@@ -136,6 +161,7 @@ export class ReviewSettingTab extends PluginSettingTab {
             if (!isNaN(n) && n > 0) {
               this.plugin.settings.globalIntervalDays = n;
               await this.plugin.saveSettings();
+              this.refreshReviewState();
             }
           })
       );
@@ -159,6 +185,7 @@ export class ReviewSettingTab extends PluginSettingTab {
               ? "included"
               : "excluded";
             await this.plugin.saveSettings();
+            this.refreshReviewState();
             this.display();
           })
       );
@@ -188,6 +215,7 @@ export class ReviewSettingTab extends PluginSettingTab {
               this.plugin.settings.excludedFolders = parsed;
             }
             await this.plugin.saveSettings();
+            this.scheduleReviewStateRefresh();
           });
         text.inputEl.rows = 5;
         text.inputEl.addClass("review-settings-textarea");
@@ -222,10 +250,13 @@ export class ReviewSettingTab extends PluginSettingTab {
                 return [{ folder: normalizePath(folder), days }];
               });
             await this.plugin.saveSettings();
+            this.scheduleReviewStateRefresh();
           });
         text.inputEl.rows = 5;
         text.inputEl.addClass("review-settings-textarea");
       });
+
+    new Setting(containerEl).setName("UI").setHeading();
 
     new Setting(containerEl)
       .setName("Show review status in status bar")
@@ -238,7 +269,7 @@ export class ReviewSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.showReviewStatus = value;
             await this.plugin.saveSettings();
-            this.plugin.updateAll();
+            this.refreshReviewState();
           })
       );
 
@@ -253,7 +284,20 @@ export class ReviewSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.showDueCounter = value;
             await this.plugin.saveSettings();
-            this.plugin.updateAll();
+            this.refreshReviewState();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Show ribbon icon")
+      .setDesc("Adds a left ribbon button that opens a random note due for review.")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showRibbonIcon)
+          .onChange(async (value) => {
+            this.plugin.settings.showRibbonIcon = value;
+            await this.plugin.saveSettings();
+            this.plugin.updateRibbonIcon();
           })
       );
 
@@ -274,6 +318,7 @@ export class ReviewSettingTab extends PluginSettingTab {
             if (v) {
               this.plugin.settings.frontmatterIntervalKey = v;
               await this.plugin.saveSettings();
+              this.refreshReviewState();
             }
           })
       );
@@ -291,6 +336,7 @@ export class ReviewSettingTab extends PluginSettingTab {
             if (v) {
               this.plugin.settings.frontmatterReviewedKey = v;
               await this.plugin.saveSettings();
+              this.refreshReviewState();
             }
           })
       );
