@@ -18,7 +18,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - run: git fetch --tags --force
+      - run: |
+          git fetch --tags --force
+          git fetch origin master --force
 
       - uses: actions/setup-node@v4
         with:
@@ -40,7 +42,7 @@ jobs:
         run: |
           tag="${GITHUB_REF#refs/tags/}"
           release_args=()
-          if [[ "$tag" == *-* ]]; then
+          if [[ "$tag" == *-* ]] || ! git merge-base --is-ancestor "$tag" origin/master; then
             release_args+=(--prerelease)
           fi
 
