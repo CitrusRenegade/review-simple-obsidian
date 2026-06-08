@@ -46,6 +46,13 @@ review_interval: 14
 
 ## Commands
 
+> [!TIP]
+> Bind **Open random note for review** to `Ctrl+Shift+R` for a fast random review workflow.
+>
+> A review can include editing, cleanup, and moving the note to a better folder with Obsidian's built-in **Move current file to another folder** command.
+>
+> When the note is done, mark it reviewed.
+
 - `Open random note for review` — opens a random note that's currently due.
 - `Mark current note as reviewed` — writes today's date to frontmatter.
 

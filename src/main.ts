@@ -17,6 +17,7 @@ export default class ReviewPlugin extends Plugin {
   private statusBar: ReviewStatusBar | null = null;
   private dueCounter: DueCounterStatusBar | null = null;
   private ribbonIconEl: HTMLElement | null = null;
+  private settingTab: ReviewSettingTab | null = null;
 
   private openRandomDue(): void {
     const file = pickRandomDue(this.app, this.settings);
@@ -86,7 +87,8 @@ export default class ReviewPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
 
-    this.addSettingTab(new ReviewSettingTab(this.app, this));
+    this.settingTab = new ReviewSettingTab(this.app, this);
+    this.addSettingTab(this.settingTab);
     this.updateRibbonIcon();
 
     const statusBarEl = this.addStatusBarItem();
@@ -169,5 +171,12 @@ export default class ReviewPlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+  }
+
+  async onExternalSettingsChange(): Promise<void> {
+    await this.loadSettings();
+    this.updateRibbonIcon();
+    this.updateAll();
+    this.settingTab?.display();
   }
 }
