@@ -259,7 +259,7 @@ export class ReviewSettingTab extends PluginSettingTab {
     new Setting(containerEl).setName("UI").setHeading();
 
     new Setting(containerEl)
-      .setName("Show review status in status bar")
+      .setName("Review status in status bar")
       .setDesc(
         "Shows per-file review indicator (last review date / due / not reviewed) for the active note."
       )
@@ -274,7 +274,7 @@ export class ReviewSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Show due counter in status bar")
+      .setName("Due counter in status bar")
       .setDesc(
         "Shows total count of notes due for review across vault, next to the current-note indicator."
       )
@@ -289,7 +289,7 @@ export class ReviewSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Show ribbon icon")
+      .setName("Ribbon icon")
       .setDesc("Adds a left ribbon button that opens a random note due for review.")
       .addToggle((toggle) =>
         toggle
