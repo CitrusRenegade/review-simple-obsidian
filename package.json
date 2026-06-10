@@ -14,13 +14,13 @@
   "devDependencies": {
     "@types/node": "^16.11.6",
     "@typescript-eslint/parser": "^8.59.0",
-    "esbuild": "0.17.3",
+    "esbuild": "^0.28.0",
     "eslint": "^9.39.4",
     "eslint-plugin-obsidianmd": "^0.2.4",
     "obsidian": "latest",
     "tslib": "2.4.0",
     "typescript": "4.7.4",
-    "vitest": "^0.34.6"
+    "vitest": "^3.2.6"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
