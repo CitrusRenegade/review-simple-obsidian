@@ -1,8 +1,47 @@
-import { App, TFile } from "obsidian";
-import { FolderInterval, ReviewSettings } from "./settings";
+import type { App, TFile } from "obsidian";
+import type { FolderInterval, ReviewSettings } from "./settings";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+export const NEVER_REVIEWED_RANDOM_SCORE = 1.5;
+
+type RandomSource = () => number;
 
 function getFrontmatter(file: TFile, app: App): Record<string, unknown> {
   return app.metadataCache.getFileCache(file)?.frontmatter ?? {};
+}
+
+function getRandomIndex(length: number, random: RandomSource): number {
+  const value = random();
+  if (value <= 0) return 0;
+  if (value >= 1) return length - 1;
+  return Math.floor(value * length);
+}
+
+export function getOverdueRatioScore(
+  lastReviewed: Date | null,
+  intervalDays: number,
+  nowMs = Date.now()
+): number {
+  if (!lastReviewed) return NEVER_REVIEWED_RANDOM_SCORE;
+  const daysSinceReviewed = Math.max(0, nowMs - lastReviewed.getTime()) / DAY_MS;
+  return daysSinceReviewed / intervalDays;
+}
+
+export function pickTournamentWinner<T>(
+  items: T[],
+  getScore: (item: T) => number,
+  random: RandomSource = Math.random
+): T | null {
+  if (items.length === 0) return null;
+  if (items.length === 1) return items[0];
+
+  const firstIndex = getRandomIndex(items.length, random);
+  let secondIndex = getRandomIndex(items.length - 1, random);
+  if (secondIndex >= firstIndex) secondIndex += 1;
+
+  const first = items[firstIndex];
+  const second = items[secondIndex];
+  return getScore(second) > getScore(first) ? second : first;
 }
 
 export function isExcluded(file: TFile, settings: ReviewSettings): boolean {
@@ -85,7 +124,7 @@ export function isDue(
   if (interval === null) return false;
   const last = getLastReviewed(file, app, settings);
   if (!last) return true;
-  return Date.now() - last.getTime() > interval * 24 * 60 * 60 * 1000;
+  return Date.now() - last.getTime() > interval * DAY_MS;
 }
 
 export function getReviewableFiles(
@@ -106,11 +145,24 @@ export function getDueFiles(app: App, settings: ReviewSettings): TFile[] {
 
 export function pickRandomDue(
   app: App,
-  settings: ReviewSettings
+  settings: ReviewSettings,
+  random: RandomSource = Math.random
 ): TFile | null {
   const due = getDueFiles(app, settings);
-  if (due.length === 0) return null;
-  return due[Math.floor(Math.random() * due.length)];
+  const nowMs = Date.now();
+  return pickTournamentWinner(
+    due,
+    (file) => {
+      const interval = getEffectiveInterval(file, app, settings);
+      if (interval === null) return Number.NEGATIVE_INFINITY;
+      return getOverdueRatioScore(
+        getLastReviewed(file, app, settings),
+        interval,
+        nowMs
+      );
+    },
+    random
+  );
 }
 
 export function countDue(app: App, settings: ReviewSettings): number {

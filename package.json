@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
-    "lint:obsidian": "eslint src/"
+    "check": "npm test && npm run build && npm run lint:obsidian",
+    "lint:obsidian": "eslint src/ tests/",
+    "test": "tsc --noEmit --skipLibCheck --project tsconfig.test.json && vitest run"
   },
   "devDependencies": {
     "@types/node": "^16.11.6",
@@ -17,7 +19,8 @@
     "eslint-plugin-obsidianmd": "^0.2.4",
     "obsidian": "latest",
     "tslib": "2.4.0",
-    "typescript": "4.7.4"
+    "typescript": "4.7.4",
+    "vitest": "^0.34.6"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

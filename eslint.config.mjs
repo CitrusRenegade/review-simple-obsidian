@@ -8,7 +8,7 @@ export default defineConfig([
     files: ["**/*.ts"],
     languageOptions: {
       parser: tsparser,
-      parserOptions: { project: "./tsconfig.json" },
+      parserOptions: { project: "./tsconfig.eslint.json" },
     },
     rules: {
       "@typescript-eslint/no-unsafe-member-access": "off",
