@@ -8,10 +8,7 @@ import {
 } from "./review";
 import { ConfirmReviewModal } from "./modal";
 import { setStringFrontmatter } from "./frontmatter";
-
-function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
+import { formatLocalDate } from "./dates";
 
 export class ReviewStatusBar {
   private el: HTMLElement;
@@ -59,9 +56,9 @@ export class ReviewStatusBar {
     if (!last) {
       this.el.setText("⚠ Not reviewed");
     } else if (isDue(file, this.app, settings)) {
-      this.el.setText(`⚠ due · ${formatDate(last)}`);
+      this.el.setText(`⚠ due · ${formatLocalDate(last)}`);
     } else {
-      this.el.setText(`✓ ${formatDate(last)}`);
+      this.el.setText(`✓ ${formatLocalDate(last)}`);
     }
   }
 
@@ -74,7 +71,7 @@ export class ReviewStatusBar {
     if (interval === null) return;
 
     new ConfirmReviewModal(this.app, file, () => {
-      const today = formatDate(new Date());
+      const today = formatLocalDate(new Date());
       this.app.fileManager
         .processFrontMatter(file, (fm) => {
           setStringFrontmatter(fm, settings.frontmatterReviewedKey, today);

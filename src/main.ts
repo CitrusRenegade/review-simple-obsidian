@@ -11,6 +11,7 @@ import { ReviewSettings, ReviewSettingTab, loadReviewSettings } from "./settings
 import { DueCounterStatusBar, ReviewStatusBar } from "./statusbar";
 import { getEffectiveInterval, pickRandomDue } from "./review";
 import { setStringFrontmatter } from "./frontmatter";
+import { formatLocalDate } from "./dates";
 
 export default class ReviewPlugin extends Plugin {
   settings!: ReviewSettings;
@@ -18,6 +19,7 @@ export default class ReviewPlugin extends Plugin {
   private dueCounter: DueCounterStatusBar | null = null;
   private ribbonIconEl: HTMLElement | null = null;
   private settingTab: ReviewSettingTab | null = null;
+  private dueCounterRefreshTimeout: number | null = null;
 
   private openRandomDue(): void {
     const file = pickRandomDue(this.app, this.settings);
@@ -30,7 +32,25 @@ export default class ReviewPlugin extends Plugin {
 
   updateAll(): void {
     this.statusBar?.update(this.app.workspace.getActiveFile());
+    this.refreshDueCounter();
+  }
+
+  private refreshDueCounter(): void {
+    if (this.dueCounterRefreshTimeout !== null) {
+      activeWindow.clearTimeout(this.dueCounterRefreshTimeout);
+      this.dueCounterRefreshTimeout = null;
+    }
     this.dueCounter?.update();
+  }
+
+  private scheduleDueCounterRefresh(): void {
+    if (this.dueCounterRefreshTimeout !== null) {
+      activeWindow.clearTimeout(this.dueCounterRefreshTimeout);
+    }
+    this.dueCounterRefreshTimeout = activeWindow.setTimeout(() => {
+      this.dueCounterRefreshTimeout = null;
+      this.dueCounter?.update();
+    }, 500);
   }
 
   updateRibbonIcon(): void {
@@ -47,7 +67,7 @@ export default class ReviewPlugin extends Plugin {
   }
 
   private async markReviewed(file: TFile): Promise<void> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = formatLocalDate(new Date());
     await this.app.fileManager.processFrontMatter(file, (fm) => {
       setStringFrontmatter(fm, this.settings.frontmatterReviewedKey, today);
     });
@@ -148,19 +168,26 @@ export default class ReviewPlugin extends Plugin {
         if (active && file.path === active.path) {
           this.statusBar?.update(file);
         }
-        this.dueCounter?.update();
+        this.scheduleDueCounterRefresh();
       })
     );
 
     this.registerEvent(
-      this.app.vault.on("create", () => this.dueCounter?.update())
+      this.app.vault.on("create", () => this.scheduleDueCounterRefresh())
     );
     this.registerEvent(
-      this.app.vault.on("delete", () => this.dueCounter?.update())
+      this.app.vault.on("delete", () => this.scheduleDueCounterRefresh())
     );
     this.registerEvent(
-      this.app.vault.on("rename", () => this.dueCounter?.update())
+      this.app.vault.on("rename", () => this.scheduleDueCounterRefresh())
     );
+
+    this.register(() => {
+      if (this.dueCounterRefreshTimeout !== null) {
+        activeWindow.clearTimeout(this.dueCounterRefreshTimeout);
+        this.dueCounterRefreshTimeout = null;
+      }
+    });
 
     this.app.workspace.onLayoutReady(() => this.updateAll());
   }

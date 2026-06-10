@@ -15,4 +15,10 @@ export default defineConfig([
       "@typescript-eslint/no-unsafe-assignment": "off",
     },
   },
+  {
+    files: ["tests/**/*.ts"],
+    rules: {
+      "obsidianmd/no-tfile-tfolder-cast": "off",
+    },
+  },
 ]);

@@ -6,6 +6,26 @@ export const NEVER_REVIEWED_RANDOM_SCORE = 1.5;
 
 type RandomSource = () => number;
 
+function parseDateOnly(value: string): Date | null | undefined {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return undefined;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
 function getFrontmatter(file: TFile, app: App): Record<string, unknown> {
   return app.metadataCache.getFileCache(file)?.frontmatter ?? {};
 }
@@ -89,14 +109,14 @@ export function getEffectiveInterval(
   app: App,
   settings: ReviewSettings
 ): number | null {
+  if (isExcluded(file, settings)) return null;
+
   const local = getLocalInterval(file, app, settings);
   if (local === "never") return null;
   if (typeof local === "number") return local;
 
   const folderInterval = getFolderInterval(file, settings);
   if (folderInterval !== null) return folderInterval;
-
-  if (isExcluded(file, settings)) return null;
 
   return settings.globalIntervalDays;
 }
@@ -111,6 +131,10 @@ export function getLastReviewed(
   if (!val) return null;
   if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
   if (typeof val !== "string" && typeof val !== "number") return null;
+  if (typeof val === "string") {
+    const dateOnly = parseDateOnly(val);
+    if (dateOnly !== undefined) return dateOnly;
+  }
   const d = new Date(val);
   return isNaN(d.getTime()) ? null : d;
 }
