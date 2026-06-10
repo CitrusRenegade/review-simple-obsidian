@@ -28,7 +28,7 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run build
+      - run: npm run check
 
       - uses: actions/attest-build-provenance@v2
         with:
