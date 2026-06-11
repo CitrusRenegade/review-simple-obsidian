@@ -25,6 +25,52 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
+          cache: npm
+
+      - name: Validate release metadata
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+
+          const tag = process.env.GITHUB_REF.replace(/^refs\/tags\//, "");
+          const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
+          const versions = JSON.parse(fs.readFileSync("versions.json", "utf8"));
+
+          const parseVersion = (version) => {
+            const parts = version.split(".").map((part) => Number.parseInt(part, 10));
+            if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
+              throw new Error(`Expected numeric x.y.z version, got ${version}.`);
+            }
+            return parts;
+          };
+
+          const compareVersions = (left, right) => {
+            const leftParts = parseVersion(left);
+            const rightParts = parseVersion(right);
+            for (let index = 0; index < leftParts.length; index += 1) {
+              if (leftParts[index] !== rightParts[index]) {
+                return leftParts[index] - rightParts[index];
+              }
+            }
+            return 0;
+          };
+
+          if (tag !== manifest.version) {
+            console.error(`Release tag ${tag} must match manifest.json version ${manifest.version}.`);
+            process.exit(1);
+          }
+
+          const matchingVersion = Object.entries(versions)
+            .filter(([pluginVersion]) => compareVersions(pluginVersion, manifest.version) <= 0)
+            .sort(([left], [right]) => compareVersions(right, left))[0];
+
+          if (!matchingVersion || matchingVersion[1] !== manifest.minAppVersion) {
+            console.error(
+              `versions.json must resolve manifest version ${manifest.version} to minAppVersion ${manifest.minAppVersion}.`
+            );
+            process.exit(1);
+          }
+          NODE
 
       - run: npm ci
 

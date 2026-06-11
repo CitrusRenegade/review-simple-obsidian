@@ -4,6 +4,9 @@
   "description": "Obsidian periodic review plugin",
   "license": "MIT",
   "main": "main.js",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
