@@ -68,11 +68,16 @@ export default class ReviewPlugin extends Plugin {
 
   private async markReviewed(file: TFile): Promise<void> {
     const today = formatLocalDate(new Date());
-    await this.app.fileManager.processFrontMatter(file, (fm) => {
-      setStringFrontmatter(fm, this.settings.frontmatterReviewedKey, today);
-    });
-    new Notice("Marked as reviewed");
-    this.updateAll();
+    try {
+      await this.app.fileManager.processFrontMatter(file, (fm) => {
+        setStringFrontmatter(fm, this.settings.frontmatterReviewedKey, today);
+      });
+      new Notice("Marked as reviewed");
+      this.updateAll();
+    } catch (e) {
+      console.error("Failed to mark as reviewed:", e);
+      new Notice("Failed to mark note as reviewed");
+    }
   }
 
   private addFileMenuItems(menu: Menu, file: TAbstractFile): void {
@@ -116,7 +121,8 @@ export default class ReviewPlugin extends Plugin {
     this.statusBar = new ReviewStatusBar(
       statusBarEl,
       this.app,
-      () => this.settings
+      () => this.settings,
+      (file) => this.markReviewed(file)
     );
 
     const counterEl = this.addStatusBarItem();
@@ -153,6 +159,12 @@ export default class ReviewPlugin extends Plugin {
     this.registerEvent(
       this.app.workspace.on("active-leaf-change", () => {
         this.statusBar?.update(this.app.workspace.getActiveFile());
+      })
+    );
+
+    this.registerEvent(
+      this.app.workspace.on("file-open", (file) => {
+        this.statusBar?.update(file);
       })
     );
 

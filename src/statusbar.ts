@@ -1,4 +1,4 @@
-import { App, Notice, TFile, setIcon } from "obsidian";
+import { App, TFile, setIcon } from "obsidian";
 import { ReviewSettings } from "./settings";
 import {
   countDue,
@@ -7,23 +7,25 @@ import {
   isDue,
 } from "./review";
 import { ConfirmReviewModal } from "./modal";
-import { setStringFrontmatter } from "./frontmatter";
 import { formatLocalDate } from "./dates";
 
 export class ReviewStatusBar {
   private el: HTMLElement;
   private app: App;
   private getSettings: () => ReviewSettings;
+  private markReviewed: (file: TFile) => Promise<void>;
   private currentFile: TFile | null = null;
 
   constructor(
     statusBarEl: HTMLElement,
     app: App,
-    getSettings: () => ReviewSettings
+    getSettings: () => ReviewSettings,
+    markReviewed: (file: TFile) => Promise<void>
   ) {
     this.el = statusBarEl;
     this.app = app;
     this.getSettings = getSettings;
+    this.markReviewed = markReviewed;
 
     this.el.addClass("review-status-bar");
     this.el.addEventListener("click", () => this.onClick());
@@ -70,18 +72,7 @@ export class ReviewStatusBar {
     const interval = getEffectiveInterval(file, this.app, settings);
     if (interval === null) return;
 
-    new ConfirmReviewModal(this.app, file, () => {
-      const today = formatLocalDate(new Date());
-      this.app.fileManager
-        .processFrontMatter(file, (fm) => {
-          setStringFrontmatter(fm, settings.frontmatterReviewedKey, today);
-        })
-        .then(() => {
-          new Notice("Marked as reviewed");
-          this.update(file);
-        })
-        .catch((e) => console.error("Failed to mark as reviewed:", e));
-    }).open();
+    new ConfirmReviewModal(this.app, file, () => this.markReviewed(file)).open();
   }
 }
 

@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { App, TFile } from "obsidian";
 import {
   countDue,
+  getCalendarDaysSince,
   getEffectiveInterval,
   getLastReviewed,
   getOverdueRatioScore,
   getReviewableFiles,
+  isDue,
   NEVER_REVIEWED_RANDOM_SCORE,
   pickRandomDue,
   pickTournamentWinner,
@@ -226,6 +228,32 @@ describe("getEffectiveInterval", () => {
 
     expect(interval).toBeNull();
   });
+
+  it("requires strict positive integer frontmatter intervals", () => {
+    const settings: ReviewSettings = {
+      ...baseSettings,
+      folderFilterMode: "included",
+      includedFolders: [],
+    };
+
+    for (const value of ["7 days", "7abc", "1e2", "7.5", 7.5, 0]) {
+      expect(
+        getEffectiveInterval(
+          file("Loose/a.md"),
+          appWithFrontmatter({ "Loose/a.md": { review_interval: value } }),
+          settings
+        )
+      ).toBeNull();
+    }
+
+    expect(
+      getEffectiveInterval(
+        file("Loose/a.md"),
+        appWithFrontmatter({ "Loose/a.md": { review_interval: "08" } }),
+        settings
+      )
+    ).toBe(8);
+  });
 });
 
 describe("reviewable and due files", () => {
@@ -293,5 +321,26 @@ describe("getLastReviewed", () => {
     );
 
     expect(last).toBeNull();
+  });
+});
+
+describe("isDue", () => {
+  it("uses calendar-day age instead of elapsed milliseconds", () => {
+    const app = appWithFrontmatter({
+      "Notes/a.md": { reviewed: "2026-06-10" },
+    });
+
+    expect(
+      isDue(file("Notes/a.md"), app, baseSettings, new Date(2026, 6, 24, 23))
+    ).toBe(false);
+    expect(
+      isDue(file("Notes/a.md"), app, baseSettings, new Date(2026, 6, 25, 0))
+    ).toBe(true);
+  });
+
+  it("does not count negative calendar-day age for future reviewed dates", () => {
+    expect(
+      getCalendarDaysSince(new Date(2026, 6, 25), new Date(2026, 6, 24))
+    ).toBe(0);
   });
 });

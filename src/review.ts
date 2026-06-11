@@ -1,4 +1,5 @@
 import type { App, TFile } from "obsidian";
+import { parsePositiveDayCount } from "./interval";
 import type { FolderInterval, ReviewSettings } from "./settings";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -47,6 +48,19 @@ export function getOverdueRatioScore(
   return daysSinceReviewed / intervalDays;
 }
 
+export function getCalendarDaysSince(
+  lastReviewed: Date,
+  now = new Date()
+): number {
+  const reviewedDay = Date.UTC(
+    lastReviewed.getFullYear(),
+    lastReviewed.getMonth(),
+    lastReviewed.getDate()
+  );
+  const nowDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(0, Math.floor((nowDay - reviewedDay) / DAY_MS));
+}
+
 export function pickTournamentWinner<T>(
   items: T[],
   getScore: (item: T) => number,
@@ -81,12 +95,7 @@ export function getLocalInterval(
   const fm = getFrontmatter(file, app);
   const val = fm[settings.frontmatterIntervalKey];
   if (val === "never") return "never";
-  if (typeof val === "number" && val > 0) return val;
-  if (typeof val === "string") {
-    const n = parseFloat(val);
-    if (!isNaN(n) && n > 0) return n;
-  }
-  return null;
+  return parsePositiveDayCount(val);
 }
 
 export function getFolderInterval(
@@ -142,13 +151,14 @@ export function getLastReviewed(
 export function isDue(
   file: TFile,
   app: App,
-  settings: ReviewSettings
+  settings: ReviewSettings,
+  now = new Date()
 ): boolean {
   const interval = getEffectiveInterval(file, app, settings);
   if (interval === null) return false;
   const last = getLastReviewed(file, app, settings);
   if (!last) return true;
-  return Date.now() - last.getTime() > interval * DAY_MS;
+  return getCalendarDaysSince(last, now) >= interval;
 }
 
 export function getReviewableFiles(
@@ -164,8 +174,14 @@ export function getReviewableFiles(
   });
 }
 
-export function getDueFiles(app: App, settings: ReviewSettings): TFile[] {
-  return getReviewableFiles(app, settings).filter((f) => isDue(f, app, settings));
+export function getDueFiles(
+  app: App,
+  settings: ReviewSettings,
+  now = new Date()
+): TFile[] {
+  return getReviewableFiles(app, settings).filter((f) =>
+    isDue(f, app, settings, now)
+  );
 }
 
 export function pickRandomDue(
@@ -173,8 +189,9 @@ export function pickRandomDue(
   settings: ReviewSettings,
   random: RandomSource = Math.random
 ): TFile | null {
-  const due = getDueFiles(app, settings);
-  const nowMs = Date.now();
+  const now = new Date();
+  const due = getDueFiles(app, settings, now);
+  const nowMs = now.getTime();
   return pickTournamentWinner(
     due,
     (file) => {

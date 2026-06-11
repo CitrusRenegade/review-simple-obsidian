@@ -2,9 +2,9 @@ import { App, Modal, TFile } from "obsidian";
 
 export class ConfirmReviewModal extends Modal {
   private file: TFile;
-  private onConfirm: () => void;
+  private onConfirm: () => void | Promise<void>;
 
-  constructor(app: App, file: TFile, onConfirm: () => void) {
+  constructor(app: App, file: TFile, onConfirm: () => void | Promise<void>) {
     super(app);
     this.file = file;
     this.onConfirm = onConfirm;
@@ -25,7 +25,7 @@ export class ConfirmReviewModal extends Modal {
       cls: "mod-cta",
     });
     confirmBtn.addEventListener("click", () => {
-      this.onConfirm();
+      void this.onConfirm();
       this.close();
     });
 

@@ -1,4 +1,5 @@
 import { App, PluginSettingTab, Setting, normalizePath } from "obsidian";
+import { parsePositiveDayCount } from "./interval";
 import type ReviewPlugin from "./main";
 
 export interface FolderInterval {
@@ -38,14 +39,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function asPositiveNumber(value: unknown, fallback: number): number {
-  const n =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-      ? parseFloat(value)
-      : NaN;
-  return !isNaN(n) && n > 0 ? n : fallback;
+function asPositiveDayCount(value: unknown, fallback: number): number {
+  return parsePositiveDayCount(value) ?? fallback;
 }
 
 function asBoolean(value: unknown, fallback: boolean): boolean {
@@ -78,8 +73,8 @@ function asFolderIntervals(value: unknown): FolderInterval[] {
   return value.flatMap((item) => {
     if (!isRecord(item)) return [];
     const folder = asNonEmptyString(item.folder, "");
-    const days = asPositiveNumber(item.days, NaN);
-    if (!folder || isNaN(days)) return [];
+    const days = parsePositiveDayCount(item.days);
+    if (!folder || days === null) return [];
     return [{ folder: normalizePath(folder), days }];
   });
 }
@@ -87,7 +82,7 @@ function asFolderIntervals(value: unknown): FolderInterval[] {
 export function loadReviewSettings(data: unknown): ReviewSettings {
   const raw = isRecord(data) ? data : {};
   return {
-    globalIntervalDays: asPositiveNumber(
+    globalIntervalDays: asPositiveDayCount(
       raw.globalIntervalDays,
       DEFAULT_SETTINGS.globalIntervalDays
     ),
@@ -159,8 +154,8 @@ export class ReviewSettingTab extends PluginSettingTab {
           .setPlaceholder("45")
           .setValue(String(this.plugin.settings.globalIntervalDays))
           .onChange(async (value) => {
-            const n = parseInt(value);
-            if (!isNaN(n) && n > 0) {
+            const n = parsePositiveDayCount(value);
+            if (n !== null) {
               this.plugin.settings.globalIntervalDays = n;
               await this.plugin.saveSettings();
               this.refreshReviewState();
@@ -247,8 +242,8 @@ export class ReviewSettingTab extends PluginSettingTab {
                 const idx = line.lastIndexOf(",");
                 if (idx < 1) return [];
                 const folder = line.slice(0, idx).trim();
-                const days = parseInt(line.slice(idx + 1));
-                if (!folder || isNaN(days) || days <= 0) return [];
+                const days = parsePositiveDayCount(line.slice(idx + 1));
+                if (!folder || days === null) return [];
                 return [{ folder: normalizePath(folder), days }];
               });
             await this.plugin.saveSettings();
