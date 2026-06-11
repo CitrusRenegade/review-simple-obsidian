@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { App, TFile } from "obsidian";
 import {
+  countDue,
   getEffectiveInterval,
   getLastReviewed,
   getOverdueRatioScore,
+  getReviewableFiles,
   NEVER_REVIEWED_RANDOM_SCORE,
+  pickRandomDue,
   pickTournamentWinner,
 } from "../src/review";
 import type { ReviewSettings } from "../src/settings";
@@ -39,13 +42,18 @@ function file(path: string): TFile {
 }
 
 function appWithFrontmatter(
-  frontmatterByPath: Record<string, Record<string, unknown>>
+  frontmatterByPath: Record<string, Record<string, unknown>>,
+  paths = Object.keys(frontmatterByPath)
 ): App {
+  const markdownFiles = paths.map((path) => file(path));
   return {
     metadataCache: {
       getFileCache: (target: TFile) => ({
         frontmatter: frontmatterByPath[target.path] ?? {},
       }),
+    },
+    vault: {
+      getMarkdownFiles: () => markdownFiles,
     },
   } as unknown as App;
 }
@@ -135,7 +143,7 @@ describe("pickTournamentWinner", () => {
 });
 
 describe("getEffectiveInterval", () => {
-  it("does not let frontmatter override included-only folder filtering", () => {
+  it("lets frontmatter interval include notes outside included-only folders", () => {
     const interval = getEffectiveInterval(
       file("Notes/a.md"),
       appWithFrontmatter({ "Notes/a.md": { review_interval: 7 } }),
@@ -143,6 +151,34 @@ describe("getEffectiveInterval", () => {
         ...baseSettings,
         folderFilterMode: "included",
         includedFolders: [],
+      }
+    );
+
+    expect(interval).toBe(7);
+  });
+
+  it("lets frontmatter interval include notes in excluded folders", () => {
+    const interval = getEffectiveInterval(
+      file("Archive/a.md"),
+      appWithFrontmatter({ "Archive/a.md": { review_interval: 7 } }),
+      {
+        ...baseSettings,
+        excludedFolders: ["Archive"],
+      }
+    );
+
+    expect(interval).toBe(7);
+  });
+
+  it("lets frontmatter never exclude notes that folder rules would include", () => {
+    const interval = getEffectiveInterval(
+      file("Notes/a.md"),
+      appWithFrontmatter({ "Notes/a.md": { review_interval: "never" } }),
+      {
+        ...baseSettings,
+        folderFilterMode: "included",
+        includedFolders: ["Notes"],
+        folderIntervals: [{ folder: "Notes", days: 7 }],
       }
     );
 
@@ -161,6 +197,78 @@ describe("getEffectiveInterval", () => {
     );
 
     expect(interval).toBeNull();
+  });
+
+  it("applies included-only filtering when a note has no frontmatter interval", () => {
+    const interval = getEffectiveInterval(
+      file("Notes/a.md"),
+      appWithFrontmatter({}),
+      {
+        ...baseSettings,
+        folderFilterMode: "included",
+        includedFolders: ["Projects"],
+      }
+    );
+
+    expect(interval).toBeNull();
+  });
+
+  it("does not let invalid frontmatter intervals bypass folder filtering", () => {
+    const interval = getEffectiveInterval(
+      file("Notes/a.md"),
+      appWithFrontmatter({ "Notes/a.md": { review_interval: 0 } }),
+      {
+        ...baseSettings,
+        folderFilterMode: "included",
+        includedFolders: ["Projects"],
+      }
+    );
+
+    expect(interval).toBeNull();
+  });
+});
+
+describe("reviewable and due files", () => {
+  it("uses frontmatter interval as a per-note opt-in for due counts and random picks", () => {
+    const app = appWithFrontmatter(
+      {
+        "Loose/manual.md": { review_interval: 7 },
+        "Loose/plain.md": {},
+      },
+      ["Loose/manual.md", "Loose/plain.md"]
+    );
+    const settings: ReviewSettings = {
+      ...baseSettings,
+      folderFilterMode: "included",
+      includedFolders: [],
+    };
+
+    expect(getReviewableFiles(app, settings).map((f) => f.path)).toEqual([
+      "Loose/manual.md",
+    ]);
+    expect(countDue(app, settings)).toBe(1);
+    expect(pickRandomDue(app, settings, randomSequence(0))?.path).toBe(
+      "Loose/manual.md"
+    );
+  });
+
+  it("keeps frontmatter never stronger than included folders in reviewable lists", () => {
+    const app = appWithFrontmatter(
+      {
+        "Notes/a.md": { review_interval: "never" },
+        "Notes/b.md": {},
+      },
+      ["Notes/a.md", "Notes/b.md"]
+    );
+    const settings: ReviewSettings = {
+      ...baseSettings,
+      folderFilterMode: "included",
+      includedFolders: ["Notes"],
+    };
+
+    expect(getReviewableFiles(app, settings).map((f) => f.path)).toEqual([
+      "Notes/b.md",
+    ]);
   });
 });
 

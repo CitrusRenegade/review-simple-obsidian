@@ -151,7 +151,9 @@ export class ReviewSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Global review interval")
-      .setDesc("Default number of days between reviews for all notes.")
+      .setDesc(
+        "Default number of days for reviewed notes without a per-note or folder interval."
+      )
       .addText((text) =>
         text
           .setPlaceholder("45")
@@ -170,10 +172,10 @@ export class ReviewSettingTab extends PluginSettingTab {
       .setName("Excluded / included folders")
       .setDesc(
         createFragment((el) => {
-          el.appendText("OFF — listed folders are excluded from review.");
+          el.appendText("OFF — listed folders are excluded by default.");
           el.createEl("br");
           el.appendText(
-            "ON — only listed folders are reviewed (empty list = nothing reviewed)."
+            "ON — only listed folders are reviewed by default. Per-note intervals can still include individual notes."
           );
         })
       )
@@ -193,7 +195,7 @@ export class ReviewSettingTab extends PluginSettingTab {
     const isIncluded = this.plugin.settings.folderFilterMode === "included";
     new Setting(containerEl)
       .setName(isIncluded ? "Global included folders" : "Global excluded folders")
-      .setDesc("One path per line, relative to vault root.")
+      .setDesc("One path per line, relative to vault root. Per-note intervals override this list.")
       .addTextArea((text) => {
         const currentList = isIncluded
           ? this.plugin.settings.includedFolders
@@ -306,7 +308,7 @@ export class ReviewSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Frontmatter interval key")
       .setDesc(
-        'Frontmatter field for per-file interval override. Set to a number (days) or "never" to exclude.'
+        'Frontmatter field for per-note interval override. Set to a number (days) to include the note, or "never" to exclude it.'
       )
       .addText((text) =>
         text

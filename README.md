@@ -7,8 +7,8 @@ Helps you reread and refine your notes on a recurring schedule. Last review date
 ## Features
 
 - Per-note status bar indicator: `✓ 2025-11-04`, `⚠ due · 2025-09-10`, or `⚠ not reviewed`.
-- Folder filter: **excluded** mode or **included**-only mode. Both lists preserved when switching.
-- Intervals can be set at three levels: global default, per-folder rules, per-note frontmatter.
+- Folder filter: **excluded** mode or **included**-only mode for batch review scope. Both lists preserved when switching.
+- Intervals can be set at three levels: global default, per-folder rules, per-note frontmatter overrides.
 - Mark as reviewed via status bar click or command palette.
 - Data stored in note frontmatter — no external database.
 - Vault-wide counter of notes currently due for review.
@@ -29,11 +29,18 @@ For development builds, install `CitrusRenegade/review-simple-obsidian` through 
 
 ## Intervals
 
-Resolution order:
+Review Simple uses folder settings for batch rules and frontmatter for per-note overrides.
 
-1. `review_interval` in the note's frontmatter (number of days, or `never` to exclude).
-2. Folder rule (longest matching path wins).
-3. Global default.
+Precedence:
+
+1. `review_interval` in the note's frontmatter.
+   - A number of days includes that note with that interval, even if it is outside the included folders or inside an excluded folder.
+   - `never` excludes that note, even if folder or global rules would include it.
+2. Folder filter mode, when the note has no frontmatter interval override.
+   - In **excluded** mode, listed folders are skipped.
+   - In **included**-only mode, only listed folders are reviewed.
+3. Folder interval rule (longest matching path wins).
+4. Global default interval.
 
 Example per-note frontmatter:
 
@@ -69,10 +76,10 @@ review_interval: 14
 Settings → Review Simple:
 
 - Global review interval (days).
-- Folder filter mode (excluded / included-only).
+- Folder filter mode (excluded / included-only) for batch review scope.
 - Folder-specific intervals, one `folder/path,days` rule per line.
 - Toggles to hide the per-note indicator or the due counter.
-- Advanced: customize frontmatter keys (`reviewed`, `review_interval`).
+- Advanced: customize frontmatter keys (`reviewed`, `review_interval`). A per-note `review_interval` overrides folder filters.
 
 ## Alternatives
 

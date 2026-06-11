@@ -109,11 +109,11 @@ export function getEffectiveInterval(
   app: App,
   settings: ReviewSettings
 ): number | null {
-  if (isExcluded(file, settings)) return null;
-
   const local = getLocalInterval(file, app, settings);
   if (local === "never") return null;
   if (typeof local === "number") return local;
+
+  if (isExcluded(file, settings)) return null;
 
   const folderInterval = getFolderInterval(file, settings);
   if (folderInterval !== null) return folderInterval;
@@ -156,9 +156,10 @@ export function getReviewableFiles(
   settings: ReviewSettings
 ): TFile[] {
   return app.vault.getMarkdownFiles().filter((f) => {
-    if (isExcluded(f, settings)) return false;
     const local = getLocalInterval(f, app, settings);
     if (local === "never") return false;
+    if (typeof local === "number") return true;
+    if (isExcluded(f, settings)) return false;
     return true;
   });
 }
