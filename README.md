@@ -25,7 +25,7 @@ Helps you reread and refine your notes on a recurring schedule. Last review date
 4. Reread to refine. Open a random due note via command palette, or by clicking the counter in the status bar.
 5. Mark it reviewed the same way — command palette or click the per-note indicator.
 
-For development builds, install `CitrusRenegade/review-simple-obsidian` through BRAT from the `master` branch.
+For unreleased builds from `master`, install `CitrusRenegade/review-simple-obsidian` through BRAT.
 
 ## Intervals
 
