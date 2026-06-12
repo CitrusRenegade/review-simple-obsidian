@@ -7,7 +7,11 @@ interface FolderReviewRuleSettings {
 }
 
 function normalizeFolderPath(path: string): string {
-  return path.trim().replace(/\\/g, "/").replace(/\/+/g, "/");
+  return path
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/\/+/g, "/")
+    .replace(/^\/+|\/+$/g, "");
 }
 
 function migrateFolderPath(

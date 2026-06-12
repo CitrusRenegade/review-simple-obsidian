@@ -119,6 +119,25 @@ describe("migrateRenamedFolderReviewRules", () => {
     ]);
   });
 
+  it("normalizes folder rule slash variants before matching", () => {
+    const settings: ReviewSettings = {
+      ...baseSettings,
+      excludedFolders: [" /Projects// ", "Projects\\", "Archive/"],
+      includedFolders: ["/Notes/", "Notes\\"],
+      folderIntervals: [
+        { folder: "/Projects//Active/", days: 30 },
+        { folder: "Projects\\Active", days: 7 },
+      ],
+    };
+
+    expect(normalizeFolderReviewRules(settings)).toBe(true);
+    expect(settings.excludedFolders).toEqual(["Projects", "Archive"]);
+    expect(settings.includedFolders).toEqual(["Notes"]);
+    expect(settings.folderIntervals).toEqual([
+      { folder: "Projects/Active", days: 30 },
+    ]);
+  });
+
   it("deduplicates renamed folder rule collisions", () => {
     const settings: ReviewSettings = {
       ...baseSettings,
