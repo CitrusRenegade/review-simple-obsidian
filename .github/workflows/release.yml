@@ -37,10 +37,10 @@ jobs:
           const versions = JSON.parse(fs.readFileSync("versions.json", "utf8"));
 
           const parseVersion = (version) => {
-            const parts = version.split(".").map((part) => Number.parseInt(part, 10));
-            if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
+            if (!/^\d+\.\d+\.\d+$/.test(version)) {
               throw new Error(`Expected numeric x.y.z version, got ${version}.`);
             }
+            const parts = version.split(".").map((part) => Number.parseInt(part, 10));
             return parts;
           };
 
