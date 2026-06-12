@@ -3,6 +3,7 @@ import {
   migrateRenamedFolderReviewRules,
   normalizeFolderReviewRules,
 } from "../src/folderRules";
+import { isValidFrontmatterKey } from "../src/frontmatterKey";
 import type { ReviewSettings } from "../src/settings";
 
 const baseSettings: ReviewSettings = {
@@ -157,4 +158,18 @@ describe("migrateRenamedFolderReviewRules", () => {
     expect(settings.folderIntervals).toEqual([{ folder: "Work", days: 30 }]);
   });
 
+});
+
+describe("frontmatter key settings", () => {
+  it("accepts simple YAML-safe frontmatter keys", () => {
+    expect(isValidFrontmatterKey("reviewed")).toBe(true);
+    expect(isValidFrontmatterKey("review_interval")).toBe(true);
+    expect(isValidFrontmatterKey("review-interval-2")).toBe(true);
+  });
+
+  it("rejects unsafe or confusing frontmatter keys", () => {
+    for (const key of ["", "reviewed at", "nested.key", "__proto__", "constructor"]) {
+      expect(isValidFrontmatterKey(key)).toBe(false);
+    }
+  });
 });

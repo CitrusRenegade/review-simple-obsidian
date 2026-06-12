@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, normalizePath } from "obsidian";
 import { parsePositiveDayCount } from "./interval";
 import { normalizeFolderReviewRules } from "./folderRules";
+import { isValidFrontmatterKey } from "./frontmatterKey";
 import type ReviewPlugin from "./main";
 
 export interface FolderInterval {
@@ -54,6 +55,12 @@ function asNonEmptyString(value: unknown, fallback: string): string {
   return trimmed ? trimmed : fallback;
 }
 
+function asFrontmatterKey(value: unknown, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  return isValidFrontmatterKey(trimmed) ? trimmed : fallback;
+}
+
 function asFolderFilterMode(value: unknown): FolderFilterMode {
   return value === "included" || value === "excluded"
     ? value
@@ -103,11 +110,11 @@ export function loadReviewSettings(data: unknown): ReviewSettings {
       raw.showRibbonIcon,
       DEFAULT_SETTINGS.showRibbonIcon
     ),
-    frontmatterIntervalKey: asNonEmptyString(
+    frontmatterIntervalKey: asFrontmatterKey(
       raw.frontmatterIntervalKey,
       DEFAULT_SETTINGS.frontmatterIntervalKey
     ),
-    frontmatterReviewedKey: asNonEmptyString(
+    frontmatterReviewedKey: asFrontmatterKey(
       raw.frontmatterReviewedKey,
       DEFAULT_SETTINGS.frontmatterReviewedKey
     ),
@@ -324,7 +331,7 @@ export class ReviewSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.frontmatterIntervalKey)
           .onChange(async (value) => {
             const v = value.trim();
-            if (v) {
+            if (isValidFrontmatterKey(v)) {
               this.plugin.settings.frontmatterIntervalKey = v;
               await this.plugin.saveSettings();
               this.refreshReviewState();
@@ -342,7 +349,7 @@ export class ReviewSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.frontmatterReviewedKey)
           .onChange(async (value) => {
             const v = value.trim();
-            if (v) {
+            if (isValidFrontmatterKey(v)) {
               this.plugin.settings.frontmatterReviewedKey = v;
               await this.plugin.saveSettings();
               this.refreshReviewState();
