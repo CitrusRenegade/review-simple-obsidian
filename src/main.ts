@@ -7,7 +7,12 @@ import {
   TFolder,
   normalizePath,
 } from "obsidian";
-import { ReviewSettings, ReviewSettingTab, loadReviewSettings } from "./settings";
+import {
+  ReviewSettings,
+  ReviewSettingTab,
+  loadReviewSettings,
+} from "./settings";
+import { migrateRenamedFolderReviewRules } from "./folderRules";
 import { DueCounterStatusBar, ReviewStatusBar } from "./statusbar";
 import { getEffectiveInterval, pickRandomDue } from "./review";
 import { setStringFrontmatter } from "./frontmatter";
@@ -51,6 +56,30 @@ export default class ReviewPlugin extends Plugin {
       this.dueCounterRefreshTimeout = null;
       this.dueCounter?.update();
     }, 500);
+  }
+
+  private async handleVaultRename(
+    file: TAbstractFile,
+    oldPath: string
+  ): Promise<void> {
+    if (!(file instanceof TFolder)) {
+      this.scheduleDueCounterRefresh();
+      return;
+    }
+
+    const changed = migrateRenamedFolderReviewRules(
+      this.settings,
+      oldPath,
+      file.path
+    );
+    if (changed) {
+      await this.saveSettings();
+      this.updateAll();
+      this.settingTab?.display();
+      return;
+    }
+
+    this.scheduleDueCounterRefresh();
   }
 
   updateRibbonIcon(): void {
@@ -191,7 +220,9 @@ export default class ReviewPlugin extends Plugin {
       this.app.vault.on("delete", () => this.scheduleDueCounterRefresh())
     );
     this.registerEvent(
-      this.app.vault.on("rename", () => this.scheduleDueCounterRefresh())
+      this.app.vault.on("rename", (file, oldPath) => {
+        void this.handleVaultRename(file, oldPath);
+      })
     );
 
     this.register(() => {
