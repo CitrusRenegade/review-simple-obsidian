@@ -3,11 +3,33 @@ import { App, Modal, TFile } from "obsidian";
 export class ConfirmReviewModal extends Modal {
   private file: TFile;
   private onConfirm: () => void | Promise<void>;
+  private confirming = false;
 
   constructor(app: App, file: TFile, onConfirm: () => void | Promise<void>) {
     super(app);
     this.file = file;
     this.onConfirm = onConfirm;
+  }
+
+  private async confirm(
+    confirmBtn: HTMLButtonElement,
+    cancelBtn: HTMLButtonElement
+  ): Promise<void> {
+    if (this.confirming) return;
+
+    this.confirming = true;
+    confirmBtn.disabled = true;
+    cancelBtn.disabled = true;
+
+    try {
+      await this.onConfirm();
+      this.close();
+    } catch (e) {
+      console.error("Failed to confirm reviewed note:", e);
+      this.confirming = false;
+      confirmBtn.disabled = false;
+      cancelBtn.disabled = false;
+    }
   }
 
   onOpen(): void {
@@ -24,12 +46,12 @@ export class ConfirmReviewModal extends Modal {
       text: "Mark as reviewed",
       cls: "mod-cta",
     });
+    const cancelBtn = buttonDiv.createEl("button", { text: "Cancel" });
+
     confirmBtn.addEventListener("click", () => {
-      void this.onConfirm();
-      this.close();
+      void this.confirm(confirmBtn, cancelBtn);
     });
 
-    const cancelBtn = buttonDiv.createEl("button", { text: "Cancel" });
     cancelBtn.addEventListener("click", () => this.close());
   }
 
