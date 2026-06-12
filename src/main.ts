@@ -34,7 +34,7 @@ export default class ReviewPlugin extends Plugin {
       this.reviewedDayOverrides.get(file.path) ?? null,
   };
 
-  private openRandomDue(): void {
+  private async openRandomDue(): Promise<void> {
     const file = pickRandomDue(
       this.app,
       this.settings,
@@ -45,7 +45,14 @@ export default class ReviewPlugin extends Plugin {
       new Notice("No notes due for review");
       return;
     }
-    void this.app.workspace.getLeaf(false).openFile(file);
+    try {
+      await this.app.workspace.getLeaf(false).openFile(file);
+    } catch (e) {
+      console.error("Failed to open random due note:", e);
+      new Notice("Failed to open random note for review");
+      this.dueCounter?.invalidateFile(file);
+      this.scheduleDueCounterRefresh();
+    }
   }
 
   updateAll(): void {
@@ -151,7 +158,9 @@ export default class ReviewPlugin extends Plugin {
       this.ribbonIconEl = this.addRibbonIcon(
         "clipboard-clock",
         "Open random note for review",
-        () => this.openRandomDue()
+        () => {
+          void this.openRandomDue();
+        }
       );
     } else if (!this.settings.showRibbonIcon && this.ribbonIconEl) {
       this.ribbonIconEl.remove();
@@ -228,14 +237,18 @@ export default class ReviewPlugin extends Plugin {
       counterEl,
       this.app,
       () => this.settings,
-      () => this.openRandomDue(),
+      () => {
+        void this.openRandomDue();
+      },
       this.reviewedDayOverrideSource
     );
 
     this.addCommand({
       id: "open-random",
       name: "Open random note for review",
-      callback: () => this.openRandomDue(),
+      callback: () => {
+        void this.openRandomDue();
+      },
     });
 
     this.addCommand({
