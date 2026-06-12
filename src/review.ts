@@ -142,7 +142,9 @@ export function getLocalInterval(
 ): number | "never" | null {
   const fm = getFrontmatter(file, app);
   const val = fm[settings.frontmatterIntervalKey];
-  if (val === "never") return "never";
+  if (typeof val === "string" && val.trim().toLowerCase() === "never") {
+    return "never";
+  }
   return parsePositiveDayCount(val);
 }
 

@@ -180,6 +180,25 @@ describe("getEffectiveInterval", () => {
     expect(interval).toBeNull();
   });
 
+  it("matches frontmatter never case-insensitively after trimming whitespace", () => {
+    const settings: ReviewSettings = {
+      ...baseSettings,
+      folderFilterMode: "included",
+      includedFolders: ["Notes"],
+      folderIntervals: [{ folder: "Notes", days: 7 }],
+    };
+
+    for (const value of ["Never", " NEVER ", "never "]) {
+      expect(
+        getEffectiveInterval(
+          file("Notes/a.md"),
+          appWithFrontmatter({ "Notes/a.md": { review_interval: value } }),
+          settings
+        )
+      ).toBeNull();
+    }
+  });
+
   it("does not let folder intervals override excluded folders", () => {
     const interval = getEffectiveInterval(
       file("Archive/a.md"),
@@ -273,13 +292,14 @@ describe("reviewable and due files", () => {
     );
   });
 
-  it("keeps frontmatter never stronger than included folders in reviewable lists", () => {
+  it("keeps frontmatter never variants stronger than included folders in reviewable lists", () => {
     const app = appWithFrontmatter(
       {
         "Notes/a.md": { review_interval: "never" },
-        "Notes/b.md": {},
+        "Notes/b.md": { review_interval: " Never " },
+        "Notes/c.md": {},
       },
-      ["Notes/a.md", "Notes/b.md"]
+      ["Notes/a.md", "Notes/b.md", "Notes/c.md"]
     );
     const settings: ReviewSettings = {
       ...baseSettings,
@@ -288,7 +308,7 @@ describe("reviewable and due files", () => {
     };
 
     expect(getReviewableFiles(app, settings).map((f) => f.path)).toEqual([
-      "Notes/b.md",
+      "Notes/c.md",
     ]);
   });
 });
