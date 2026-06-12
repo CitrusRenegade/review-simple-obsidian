@@ -67,7 +67,7 @@ export default class ReviewPlugin extends Plugin {
 
   private refreshDueCounter(): void {
     if (this.dueCounterRefreshTimeout !== null) {
-      activeWindow.clearTimeout(this.dueCounterRefreshTimeout);
+      window.clearTimeout(this.dueCounterRefreshTimeout);
       this.dueCounterRefreshTimeout = null;
     }
     this.dueCounter?.update();
@@ -75,13 +75,13 @@ export default class ReviewPlugin extends Plugin {
 
   private scheduleDueCounterRefresh(): void {
     if (this.dueCounterRefreshTimeout !== null) {
-      activeWindow.clearTimeout(this.dueCounterRefreshTimeout);
+      window.clearTimeout(this.dueCounterRefreshTimeout);
       this.dueCounterRefreshTimeout = null;
     }
     if (!this.settings.showDueCounter) {
       return;
     }
-    this.dueCounterRefreshTimeout = activeWindow.setTimeout(() => {
+    this.dueCounterRefreshTimeout = window.setTimeout(() => {
       this.dueCounterRefreshTimeout = null;
       this.dueCounter?.update();
     }, 500);
@@ -89,7 +89,7 @@ export default class ReviewPlugin extends Plugin {
 
   private scheduleLocalDayRefresh(): void {
     if (this.localDayRefreshTimeout !== null) {
-      activeWindow.clearTimeout(this.localDayRefreshTimeout);
+      window.clearTimeout(this.localDayRefreshTimeout);
       this.localDayRefreshTimeout = null;
     }
 
@@ -104,7 +104,7 @@ export default class ReviewPlugin extends Plugin {
     );
     const delay = Math.max(1000, nextLocalDay.getTime() - now.getTime());
 
-    this.localDayRefreshTimeout = activeWindow.setTimeout(() => {
+    this.localDayRefreshTimeout = window.setTimeout(() => {
       this.localDayRefreshTimeout = null;
       this.currentLocalDay = formatLocalDate(new Date());
       this.refreshReviewState();
@@ -146,7 +146,7 @@ export default class ReviewPlugin extends Plugin {
     if (changed) {
       await this.saveSettings();
       this.updateAll();
-      this.settingTab?.display();
+      this.settingTab?.refresh();
       return;
     }
 
@@ -336,11 +336,11 @@ export default class ReviewPlugin extends Plugin {
 
     this.register(() => {
       if (this.dueCounterRefreshTimeout !== null) {
-        activeWindow.clearTimeout(this.dueCounterRefreshTimeout);
+        window.clearTimeout(this.dueCounterRefreshTimeout);
         this.dueCounterRefreshTimeout = null;
       }
       if (this.localDayRefreshTimeout !== null) {
-        activeWindow.clearTimeout(this.localDayRefreshTimeout);
+        window.clearTimeout(this.localDayRefreshTimeout);
         this.localDayRefreshTimeout = null;
       }
     });
@@ -365,6 +365,6 @@ export default class ReviewPlugin extends Plugin {
     await this.loadSettings();
     this.updateRibbonIcon();
     this.refreshReviewState();
-    this.settingTab?.display();
+    this.settingTab?.refresh();
   }
 }

@@ -135,7 +135,7 @@ export class ReviewSettingTab extends PluginSettingTab {
 
   private refreshReviewState(): void {
     if (this.refreshTimeout !== null) {
-      activeWindow.clearTimeout(this.refreshTimeout);
+      window.clearTimeout(this.refreshTimeout);
       this.refreshTimeout = null;
     }
     this.plugin.refreshReviewState();
@@ -143,9 +143,9 @@ export class ReviewSettingTab extends PluginSettingTab {
 
   private scheduleReviewStateRefresh(): void {
     if (this.refreshTimeout !== null) {
-      activeWindow.clearTimeout(this.refreshTimeout);
+      window.clearTimeout(this.refreshTimeout);
     }
-    this.refreshTimeout = activeWindow.setTimeout(() => {
+    this.refreshTimeout = window.setTimeout(() => {
       this.refreshTimeout = null;
       this.plugin.refreshReviewState();
     }, 500);
@@ -161,9 +161,9 @@ export class ReviewSettingTab extends PluginSettingTab {
 
   private scheduleSettingsSave(): void {
     if (this.saveTimeout !== null) {
-      activeWindow.clearTimeout(this.saveTimeout);
+      window.clearTimeout(this.saveTimeout);
     }
-    this.saveTimeout = activeWindow.setTimeout(() => {
+    this.saveTimeout = window.setTimeout(() => {
       this.saveTimeout = null;
       void this.saveSettingsNow();
     }, 500);
@@ -171,17 +171,25 @@ export class ReviewSettingTab extends PluginSettingTab {
 
   dispose(): void {
     if (this.refreshTimeout !== null) {
-      activeWindow.clearTimeout(this.refreshTimeout);
+      window.clearTimeout(this.refreshTimeout);
       this.refreshTimeout = null;
     }
     if (this.saveTimeout !== null) {
-      activeWindow.clearTimeout(this.saveTimeout);
+      window.clearTimeout(this.saveTimeout);
       this.saveTimeout = null;
       void this.saveSettingsNow();
     }
   }
 
+  refresh(): void {
+    this.render();
+  }
+
   display(): void {
+    this.render();
+  }
+
+  private render(): void {
     const { containerEl } = this;
     containerEl.empty();
 
@@ -224,7 +232,7 @@ export class ReviewSettingTab extends PluginSettingTab {
               : "excluded";
             await this.plugin.saveSettings();
             this.refreshReviewState();
-            this.display();
+            this.refresh();
           })
       );
 
@@ -268,8 +276,7 @@ export class ReviewSettingTab extends PluginSettingTab {
       )
       .addTextArea((text) => {
         text
-          // eslint-disable-next-line obsidianmd/ui/sentence-case -- technical placeholder values, not prose UI copy
-          .setPlaceholder("Notes,90\nProjects/Portfolio,30")
+          .setPlaceholder("Notes,90\nprojects/portfolio,30")
           .setValue(
             this.plugin.settings.folderIntervals
               .map((r) => `${r.folder},${r.days}`)
@@ -350,8 +357,6 @@ export class ReviewSettingTab extends PluginSettingTab {
       )
       .addText((text) =>
         text
-          // eslint-disable-next-line obsidianmd/ui/sentence-case -- frontmatter keys are case-sensitive technical values
-          .setPlaceholder("review_interval")
           .setValue(this.plugin.settings.frontmatterIntervalKey)
           .onChange(async (value) => {
             const v = value.trim();
@@ -368,8 +373,6 @@ export class ReviewSettingTab extends PluginSettingTab {
       .setDesc("Frontmatter field where the last review date is stored.")
       .addText((text) =>
         text
-          // eslint-disable-next-line obsidianmd/ui/sentence-case -- frontmatter keys are case-sensitive technical values
-          .setPlaceholder("reviewed")
           .setValue(this.plugin.settings.frontmatterReviewedKey)
           .onChange(async (value) => {
             const v = value.trim();
