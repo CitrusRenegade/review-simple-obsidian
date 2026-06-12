@@ -5,26 +5,76 @@ import type { FolderInterval, ReviewSettings } from "./settings";
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const NEVER_REVIEWED_RANDOM_SCORE = 1.5;
 
+export type ReviewDay = string;
+
 type RandomSource = () => number;
 
-function parseDateOnly(value: string): Date | null | undefined {
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+function formatReviewDay(year: number, month: number, day: number): ReviewDay {
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+function reviewDayFromParts(
+  year: number,
+  month: number,
+  day: number
+): ReviewDay | null {
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return formatReviewDay(year, month, day);
+}
+
+function reviewDayFromDate(date: Date): ReviewDay | null {
+  if (isNaN(date.getTime())) return null;
+  return formatReviewDay(
+    date.getUTCFullYear(),
+    date.getUTCMonth() + 1,
+    date.getUTCDate()
+  );
+}
+
+function parseDateOnly(value: string): ReviewDay | null | undefined {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return undefined;
 
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  const date = new Date(year, month - 1, day);
+  return reviewDayFromParts(year, month, day);
+}
 
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
-  ) {
-    return null;
+function parseLeadingReviewDay(value: string): ReviewDay | null | undefined {
+  const match = /^(\d{4}-\d{2}-\d{2})(?:[T\s].*)?$/.exec(value.trim());
+  if (!match) return undefined;
+  return parseDateOnly(match[1]);
+}
+
+function parseReviewDay(value: unknown): ReviewDay | null {
+  if (!value) return null;
+
+  if (typeof value === "string") {
+    const parsed = parseLeadingReviewDay(value);
+    return parsed === undefined ? null : parsed;
   }
 
-  return date;
+  if (value instanceof Date) return reviewDayFromDate(value);
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return reviewDayFromDate(new Date(value));
+  }
+
+  return null;
 }
 
 function getFrontmatter(file: TFile, app: App): Record<string, unknown> {
@@ -39,24 +89,22 @@ function getRandomIndex(length: number, random: RandomSource): number {
 }
 
 export function getOverdueRatioScore(
-  lastReviewed: Date | null,
+  lastReviewedDay: ReviewDay | null,
   intervalDays: number,
-  nowMs = Date.now()
+  now = new Date()
 ): number {
-  if (!lastReviewed) return NEVER_REVIEWED_RANDOM_SCORE;
-  const daysSinceReviewed = Math.max(0, nowMs - lastReviewed.getTime()) / DAY_MS;
-  return daysSinceReviewed / intervalDays;
+  if (!lastReviewedDay) return NEVER_REVIEWED_RANDOM_SCORE;
+  return getCalendarDaysSince(lastReviewedDay, now) / intervalDays;
 }
 
 export function getCalendarDaysSince(
-  lastReviewed: Date,
+  lastReviewedDay: ReviewDay,
   now = new Date()
 ): number {
-  const reviewedDay = Date.UTC(
-    lastReviewed.getFullYear(),
-    lastReviewed.getMonth(),
-    lastReviewed.getDate()
-  );
+  const parsed = parseDateOnly(lastReviewedDay);
+  if (!parsed) return 0;
+  const [year, month, day] = parsed.split("-").map(Number);
+  const reviewedDay = Date.UTC(year, month - 1, day);
   const nowDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   return Math.max(0, Math.floor((nowDay - reviewedDay) / DAY_MS));
 }
@@ -130,22 +178,13 @@ export function getEffectiveInterval(
   return settings.globalIntervalDays;
 }
 
-export function getLastReviewed(
+export function getLastReviewedDay(
   file: TFile,
   app: App,
   settings: ReviewSettings
-): Date | null {
+): ReviewDay | null {
   const fm = getFrontmatter(file, app);
-  const val = fm[settings.frontmatterReviewedKey];
-  if (!val) return null;
-  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
-  if (typeof val !== "string" && typeof val !== "number") return null;
-  if (typeof val === "string") {
-    const dateOnly = parseDateOnly(val);
-    if (dateOnly !== undefined) return dateOnly;
-  }
-  const d = new Date(val);
-  return isNaN(d.getTime()) ? null : d;
+  return parseReviewDay(fm[settings.frontmatterReviewedKey]);
 }
 
 export function isDue(
@@ -156,9 +195,9 @@ export function isDue(
 ): boolean {
   const interval = getEffectiveInterval(file, app, settings);
   if (interval === null) return false;
-  const last = getLastReviewed(file, app, settings);
-  if (!last) return true;
-  return getCalendarDaysSince(last, now) >= interval;
+  const lastReviewedDay = getLastReviewedDay(file, app, settings);
+  if (!lastReviewedDay) return true;
+  return getCalendarDaysSince(lastReviewedDay, now) >= interval;
 }
 
 export function getReviewableFiles(
@@ -191,16 +230,15 @@ export function pickRandomDue(
 ): TFile | null {
   const now = new Date();
   const due = getDueFiles(app, settings, now);
-  const nowMs = now.getTime();
   return pickTournamentWinner(
     due,
     (file) => {
       const interval = getEffectiveInterval(file, app, settings);
       if (interval === null) return Number.NEGATIVE_INFINITY;
       return getOverdueRatioScore(
-        getLastReviewed(file, app, settings),
+        getLastReviewedDay(file, app, settings),
         interval,
-        nowMs
+        now
       );
     },
     random

@@ -3,11 +3,10 @@ import { ReviewSettings } from "./settings";
 import {
   countDue,
   getEffectiveInterval,
-  getLastReviewed,
+  getLastReviewedDay,
   isDue,
 } from "./review";
 import { ConfirmReviewModal } from "./modal";
-import { formatLocalDate } from "./dates";
 
 export class ReviewStatusBar {
   private el: HTMLElement;
@@ -53,14 +52,14 @@ export class ReviewStatusBar {
     }
 
     this.el.removeClass("review-hidden");
-    const last = getLastReviewed(file, this.app, settings);
+    const lastReviewedDay = getLastReviewedDay(file, this.app, settings);
 
-    if (!last) {
+    if (!lastReviewedDay) {
       this.el.setText("⚠ Not reviewed");
     } else if (isDue(file, this.app, settings)) {
-      this.el.setText(`⚠ due · ${formatLocalDate(last)}`);
+      this.el.setText(`⚠ due · ${lastReviewedDay}`);
     } else {
-      this.el.setText(`✓ ${formatLocalDate(last)}`);
+      this.el.setText(`✓ ${lastReviewedDay}`);
     }
   }
 

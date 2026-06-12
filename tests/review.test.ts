@@ -4,7 +4,7 @@ import {
   countDue,
   getCalendarDaysSince,
   getEffectiveInterval,
-  getLastReviewed,
+  getLastReviewedDay,
   getOverdueRatioScore,
   getReviewableFiles,
   isDue,
@@ -14,12 +14,7 @@ import {
 } from "../src/review";
 import type { ReviewSettings } from "../src/settings";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const NOW_MS = Date.UTC(2026, 0, 31);
-
-function daysAgo(days: number): Date {
-  return new Date(NOW_MS - days * DAY_MS);
-}
+const NOW = new Date(2026, 0, 31, 12);
 
 function randomSequence(...values: number[]): () => number {
   let index = 0;
@@ -88,10 +83,10 @@ describe("pickTournamentWinner", () => {
   it("returns the candidate with the higher overdue ratio", () => {
     const result = pickTournamentWinner(
       [
-        { id: "barely-due", reviewed: daysAgo(31), interval: 30 },
-        { id: "stale", reviewed: daysAgo(90), interval: 30 },
+        { id: "barely-due", reviewed: "2026-01-01", interval: 30 },
+        { id: "stale", reviewed: "2025-11-01", interval: 30 },
       ],
-      (item) => getOverdueRatioScore(item.reviewed, item.interval, NOW_MS),
+      (item) => getOverdueRatioScore(item.reviewed, item.interval, NOW),
       randomSequence(0, 0)
     );
 
@@ -101,10 +96,10 @@ describe("pickTournamentWinner", () => {
   it("prefers a stale weekly note over a barely stale yearly note", () => {
     const result = pickTournamentWinner(
       [
-        { id: "yearly", reviewed: daysAgo(395), interval: 365 },
-        { id: "weekly", reviewed: daysAgo(21), interval: 7 },
+        { id: "yearly", reviewed: "2025-01-01", interval: 365 },
+        { id: "weekly", reviewed: "2026-01-10", interval: 7 },
       ],
-      (item) => getOverdueRatioScore(item.reviewed, item.interval, NOW_MS),
+      (item) => getOverdueRatioScore(item.reviewed, item.interval, NOW),
       randomSequence(0, 0)
     );
 
@@ -112,24 +107,22 @@ describe("pickTournamentWinner", () => {
   });
 
   it("scores never-reviewed notes moderately above barely-due notes", () => {
-    expect(getOverdueRatioScore(null, 30, NOW_MS)).toBe(
-      NEVER_REVIEWED_RANDOM_SCORE
-    );
+    expect(getOverdueRatioScore(null, 30, NOW)).toBe(NEVER_REVIEWED_RANDOM_SCORE);
 
     const neverBeatsBarelyDue = pickTournamentWinner(
       [
         { id: "never", reviewed: null, interval: 30 },
-        { id: "barely-due", reviewed: daysAgo(31), interval: 30 },
+        { id: "barely-due", reviewed: "2026-01-01", interval: 30 },
       ],
-      (item) => getOverdueRatioScore(item.reviewed, item.interval, NOW_MS),
+      (item) => getOverdueRatioScore(item.reviewed, item.interval, NOW),
       randomSequence(0, 0)
     );
     const staleBeatsNever = pickTournamentWinner(
       [
         { id: "never", reviewed: null, interval: 30 },
-        { id: "stale", reviewed: daysAgo(90), interval: 30 },
+        { id: "stale", reviewed: "2025-11-01", interval: 30 },
       ],
-      (item) => getOverdueRatioScore(item.reviewed, item.interval, NOW_MS),
+      (item) => getOverdueRatioScore(item.reviewed, item.interval, NOW),
       randomSequence(0, 0)
     );
 
@@ -300,27 +293,75 @@ describe("reviewable and due files", () => {
   });
 });
 
-describe("getLastReviewed", () => {
-  it("parses date-only frontmatter as a local date", () => {
-    const last = getLastReviewed(
+describe("getLastReviewedDay", () => {
+  it("parses date-only frontmatter as a canonical review day", () => {
+    const last = getLastReviewedDay(
       file("Notes/a.md"),
       appWithFrontmatter({ "Notes/a.md": { reviewed: "2026-06-10" } }),
       baseSettings
     );
 
-    expect(last?.getFullYear()).toBe(2026);
-    expect(last?.getMonth()).toBe(5);
-    expect(last?.getDate()).toBe(10);
+    expect(last).toBe("2026-06-10");
+  });
+
+  it("normalizes legacy Date frontmatter by UTC day to avoid negative-timezone drift", () => {
+    const last = getLastReviewedDay(
+      file("Notes/a.md"),
+      appWithFrontmatter({
+        "Notes/a.md": { reviewed: new Date("2026-06-10") },
+      }),
+      baseSettings
+    );
+
+    expect(last).toBe("2026-06-10");
+  });
+
+  it("normalizes string datetime-like frontmatter by written calendar day", () => {
+    const app = appWithFrontmatter({
+      "Notes/zulu.md": { reviewed: "2026-06-10T00:00:00.000Z" },
+      "Notes/offset.md": { reviewed: "2026-06-10T00:00:00+03:00" },
+      "Notes/spaced.md": { reviewed: "2026-06-10 12:30" },
+    });
+
+    expect(getLastReviewedDay(file("Notes/zulu.md"), app, baseSettings)).toBe(
+      "2026-06-10"
+    );
+    expect(getLastReviewedDay(file("Notes/offset.md"), app, baseSettings)).toBe(
+      "2026-06-10"
+    );
+    expect(getLastReviewedDay(file("Notes/spaced.md"), app, baseSettings)).toBe(
+      "2026-06-10"
+    );
+  });
+
+  it("normalizes numeric legacy frontmatter by UTC day", () => {
+    const app = appWithFrontmatter({
+      "Notes/number.md": { reviewed: Date.UTC(2026, 5, 10) },
+    });
+
+    expect(getLastReviewedDay(file("Notes/number.md"), app, baseSettings)).toBe(
+      "2026-06-10"
+    );
   });
 
   it("ignores impossible date-only frontmatter values", () => {
-    const last = getLastReviewed(
+    const last = getLastReviewedDay(
       file("Notes/a.md"),
       appWithFrontmatter({ "Notes/a.md": { reviewed: "2026-02-31" } }),
       baseSettings
     );
 
     expect(last).toBeNull();
+  });
+
+  it("ignores impossible datetime-like and non-date frontmatter values", () => {
+    const app = appWithFrontmatter({
+      "Notes/datetime.md": { reviewed: "2026-02-31T00:00:00" },
+      "Notes/text.md": { reviewed: "not a date" },
+    });
+
+    expect(getLastReviewedDay(file("Notes/datetime.md"), app, baseSettings)).toBeNull();
+    expect(getLastReviewedDay(file("Notes/text.md"), app, baseSettings)).toBeNull();
   });
 });
 
@@ -339,8 +380,6 @@ describe("isDue", () => {
   });
 
   it("does not count negative calendar-day age for future reviewed dates", () => {
-    expect(
-      getCalendarDaysSince(new Date(2026, 6, 25), new Date(2026, 6, 24))
-    ).toBe(0);
+    expect(getCalendarDaysSince("2026-07-25", new Date(2026, 6, 24))).toBe(0);
   });
 });
