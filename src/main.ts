@@ -40,6 +40,11 @@ export default class ReviewPlugin extends Plugin {
     this.refreshDueCounter();
   }
 
+  refreshReviewState(): void {
+    this.dueCounter?.invalidateAll();
+    this.updateAll();
+  }
+
   private refreshDueCounter(): void {
     if (this.dueCounterRefreshTimeout !== null) {
       activeWindow.clearTimeout(this.dueCounterRefreshTimeout);
@@ -51,6 +56,10 @@ export default class ReviewPlugin extends Plugin {
   private scheduleDueCounterRefresh(): void {
     if (this.dueCounterRefreshTimeout !== null) {
       activeWindow.clearTimeout(this.dueCounterRefreshTimeout);
+      this.dueCounterRefreshTimeout = null;
+    }
+    if (!this.settings.showDueCounter) {
+      return;
     }
     this.dueCounterRefreshTimeout = activeWindow.setTimeout(() => {
       this.dueCounterRefreshTimeout = null;
@@ -62,6 +71,14 @@ export default class ReviewPlugin extends Plugin {
     file: TAbstractFile,
     oldPath: string
   ): Promise<void> {
+    if (file instanceof TFile) {
+      this.dueCounter?.renameFile(file, oldPath);
+      this.scheduleDueCounterRefresh();
+      return;
+    }
+
+    this.dueCounter?.invalidateAll();
+
     if (!(file instanceof TFolder)) {
       this.scheduleDueCounterRefresh();
       return;
@@ -102,6 +119,7 @@ export default class ReviewPlugin extends Plugin {
         setStringFrontmatter(fm, this.settings.frontmatterReviewedKey, today);
       });
       new Notice("Marked as reviewed");
+      this.dueCounter?.invalidateFile(file);
       this.updateAll();
     } catch (e) {
       console.error("Failed to mark as reviewed:", e);
@@ -134,7 +152,7 @@ export default class ReviewPlugin extends Plugin {
 
     this.settings.excludedFolders = [...this.settings.excludedFolders, folderPath];
     await this.saveSettings();
-    this.updateAll();
+    this.refreshReviewState();
     new Notice("Folder excluded from review");
   }
 
@@ -209,15 +227,28 @@ export default class ReviewPlugin extends Plugin {
         if (active && file.path === active.path) {
           this.statusBar?.update(file);
         }
+        this.dueCounter?.invalidateFile(file);
         this.scheduleDueCounterRefresh();
       })
     );
 
     this.registerEvent(
-      this.app.vault.on("create", () => this.scheduleDueCounterRefresh())
+      this.app.vault.on("create", (file) => {
+        if (file instanceof TFile) {
+          this.dueCounter?.invalidateFile(file);
+          this.scheduleDueCounterRefresh();
+        }
+      })
     );
     this.registerEvent(
-      this.app.vault.on("delete", () => this.scheduleDueCounterRefresh())
+      this.app.vault.on("delete", (file) => {
+        if (file instanceof TFile) {
+          this.dueCounter?.removeFile(file);
+        } else {
+          this.dueCounter?.invalidateAll();
+        }
+        this.scheduleDueCounterRefresh();
+      })
     );
     this.registerEvent(
       this.app.vault.on("rename", (file, oldPath) => {
@@ -246,7 +277,7 @@ export default class ReviewPlugin extends Plugin {
   async onExternalSettingsChange(): Promise<void> {
     await this.loadSettings();
     this.updateRibbonIcon();
-    this.updateAll();
+    this.refreshReviewState();
     this.settingTab?.display();
   }
 }

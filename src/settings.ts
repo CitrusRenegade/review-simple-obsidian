@@ -127,7 +127,7 @@ export class ReviewSettingTab extends PluginSettingTab {
       activeWindow.clearTimeout(this.refreshTimeout);
       this.refreshTimeout = null;
     }
-    this.plugin.updateAll();
+    this.plugin.refreshReviewState();
   }
 
   private scheduleReviewStateRefresh(): void {
@@ -136,7 +136,7 @@ export class ReviewSettingTab extends PluginSettingTab {
     }
     this.refreshTimeout = activeWindow.setTimeout(() => {
       this.refreshTimeout = null;
-      this.plugin.updateAll();
+      this.plugin.refreshReviewState();
     }, 500);
   }
 

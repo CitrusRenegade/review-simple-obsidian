@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { App, TFile } from "obsidian";
 import {
   countDue,
+  DueCounterCache,
   getCalendarDaysSince,
   getEffectiveInterval,
   getLastReviewedDay,
@@ -310,6 +311,150 @@ describe("reviewable and due files", () => {
     expect(getReviewableFiles(app, settings).map((f) => f.path)).toEqual([
       "Notes/c.md",
     ]);
+  });
+});
+
+describe("DueCounterCache", () => {
+  it("updates a changed file without another full-vault scan", () => {
+    const a = file("Notes/a.md");
+    const b = file("Notes/b.md");
+    const frontmatterByPath: Record<string, Record<string, unknown>> = {
+      "Notes/a.md": { reviewed: "2026-01-31" },
+      "Notes/b.md": {},
+    };
+    let scanCount = 0;
+    const app = {
+      metadataCache: {
+        getFileCache: (target: TFile) => ({
+          frontmatter: frontmatterByPath[target.path] ?? {},
+        }),
+      },
+      vault: {
+        getMarkdownFiles: () => {
+          scanCount += 1;
+          return [a, b];
+        },
+      },
+    } as unknown as App;
+    const cache = new DueCounterCache(app, () => baseSettings);
+
+    expect(cache.countDue(NOW)).toBe(1);
+    expect(scanCount).toBe(1);
+
+    frontmatterByPath["Notes/a.md"] = { reviewed: "2025-01-31" };
+    cache.invalidateFile(a);
+
+    expect(cache.countDue(NOW)).toBe(2);
+    expect(scanCount).toBe(1);
+  });
+
+  it("keeps the cached count correct after create, delete, and file rename", () => {
+    const a = file("Notes/a.md");
+    const b = file("Notes/b.md");
+    const c = file("Notes/c.md");
+    const renamedB = file("Archive/b.md");
+    let markdownFiles = [a, b];
+    const frontmatterByPath: Record<string, Record<string, unknown>> = {
+      "Notes/a.md": {},
+      "Notes/b.md": { reviewed: "2026-01-31" },
+      "Notes/c.md": {},
+      "Archive/b.md": {},
+    };
+    let settings: ReviewSettings = {
+      ...baseSettings,
+      excludedFolders: ["Archive"],
+    };
+    const app = {
+      metadataCache: {
+        getFileCache: (target: TFile) => ({
+          frontmatter: frontmatterByPath[target.path] ?? {},
+        }),
+      },
+      vault: {
+        getMarkdownFiles: () => markdownFiles,
+      },
+    } as unknown as App;
+    const cache = new DueCounterCache(app, () => settings);
+
+    expect(cache.countDue(NOW)).toBe(1);
+
+    markdownFiles = [a, b, c];
+    cache.invalidateFile(c);
+    expect(cache.countDue(NOW)).toBe(2);
+
+    markdownFiles = [b, c];
+    cache.removeFile(a);
+    expect(cache.countDue(NOW)).toBe(1);
+
+    markdownFiles = [renamedB, c];
+    cache.renameFile(renamedB, "Notes/b.md");
+    expect(cache.countDue(NOW)).toBe(1);
+
+    settings = {
+      ...settings,
+      excludedFolders: [],
+    };
+    cache.invalidateAll();
+    expect(cache.countDue(NOW)).toBe(2);
+  });
+
+  it("rebuilds after review rules change", () => {
+    const a = file("Notes/a.md");
+    let scanCount = 0;
+    let settings: ReviewSettings = baseSettings;
+    const app = {
+      metadataCache: {
+        getFileCache: () => ({ frontmatter: {} }),
+      },
+      vault: {
+        getMarkdownFiles: () => {
+          scanCount += 1;
+          return [a];
+        },
+      },
+    } as unknown as App;
+    const cache = new DueCounterCache(app, () => settings);
+
+    expect(cache.countDue(NOW)).toBe(1);
+    expect(scanCount).toBe(1);
+
+    settings = {
+      ...baseSettings,
+      folderFilterMode: "included",
+      includedFolders: [],
+    };
+    cache.invalidateAll();
+
+    expect(cache.countDue(NOW)).toBe(0);
+    expect(scanCount).toBe(2);
+  });
+
+  it("rebuilds when the local day changes", () => {
+    const a = file("Notes/a.md");
+    let scanCount = 0;
+    const app = {
+      metadataCache: {
+        getFileCache: () => ({ frontmatter: { reviewed: "2026-01-30" } }),
+      },
+      vault: {
+        getMarkdownFiles: () => {
+          scanCount += 1;
+          return [a];
+        },
+      },
+    } as unknown as App;
+    const settings: ReviewSettings = {
+      ...baseSettings,
+      globalIntervalDays: 2,
+    };
+    const cache = new DueCounterCache(app, () => settings);
+
+    expect(cache.countDue(new Date(2026, 0, 31))).toBe(0);
+    expect(cache.countDue(new Date(2026, 0, 31, 23))).toBe(0);
+    expect(scanCount).toBe(1);
+
+    expect(cache.countDue(new Date(2026, 1, 1))).toBe(1);
+    expect(scanCount).toBe(2);
   });
 });
 

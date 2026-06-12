@@ -1,7 +1,7 @@
 import { App, TFile, setIcon } from "obsidian";
 import { ReviewSettings } from "./settings";
 import {
-  countDue,
+  DueCounterCache,
   getEffectiveInterval,
   getLastReviewedDay,
   isDue,
@@ -77,9 +77,9 @@ export class ReviewStatusBar {
 
 export class DueCounterStatusBar {
   private el: HTMLElement;
-  private app: App;
   private getSettings: () => ReviewSettings;
   private countEl: HTMLElement;
+  private cache: DueCounterCache;
 
   constructor(
     statusBarEl: HTMLElement,
@@ -88,8 +88,8 @@ export class DueCounterStatusBar {
     onClick: () => void
   ) {
     this.el = statusBarEl;
-    this.app = app;
     this.getSettings = getSettings;
+    this.cache = new DueCounterCache(app, getSettings);
 
     this.el.addClass("review-due-counter");
     this.el.setAttribute("data-tooltip-position", "top");
@@ -106,12 +106,28 @@ export class DueCounterStatusBar {
       return;
     }
 
-    const n = countDue(this.app, settings);
+    const n = this.cache.countDue();
     this.countEl.setText(String(n));
     this.el.setAttribute(
       "aria-label",
       `${n} notes due for review across vault. Click to open random one.`
     );
     this.el.toggleClass("review-hidden", n === 0);
+  }
+
+  invalidateAll(): void {
+    this.cache.invalidateAll();
+  }
+
+  invalidateFile(file: TFile): void {
+    this.cache.invalidateFile(file);
+  }
+
+  removeFile(pathOrFile: string | TFile): void {
+    this.cache.removeFile(pathOrFile);
+  }
+
+  renameFile(file: TFile, oldPath: string): void {
+    this.cache.renameFile(file, oldPath);
   }
 }

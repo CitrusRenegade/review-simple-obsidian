@@ -9,6 +9,11 @@ export type ReviewDay = string;
 
 type RandomSource = () => number;
 
+type CachedDueState = {
+  file: TFile;
+  due: boolean;
+};
+
 function pad2(value: number): string {
   return String(value).padStart(2, "0");
 }
@@ -42,6 +47,10 @@ function reviewDayFromDate(date: Date): ReviewDay | null {
     date.getUTCMonth() + 1,
     date.getUTCDate()
   );
+}
+
+function localDayKey(date: Date): string {
+  return formatReviewDay(date.getFullYear(), date.getMonth() + 1, date.getDate());
 }
 
 function parseDateOnly(value: string): ReviewDay | null | undefined {
@@ -249,4 +258,99 @@ export function pickRandomDue(
 
 export function countDue(app: App, settings: ReviewSettings): number {
   return getDueFiles(app, settings).length;
+}
+
+export class DueCounterCache {
+  private app: App;
+  private getSettings: () => ReviewSettings;
+  private entriesByPath = new Map<string, CachedDueState>();
+  private dirtyFilesByPath = new Map<string, TFile>();
+  private dueCount: number | null = null;
+  private countedDay: string | null = null;
+
+  constructor(app: App, getSettings: () => ReviewSettings) {
+    this.app = app;
+    this.getSettings = getSettings;
+  }
+
+  invalidateAll(): void {
+    this.entriesByPath.clear();
+    this.dirtyFilesByPath.clear();
+    this.dueCount = null;
+    this.countedDay = null;
+  }
+
+  invalidateFile(file: TFile): void {
+    if (file.extension !== "md" || this.dueCount === null) return;
+
+    const previous = this.entriesByPath.get(file.path);
+    if (previous?.due) {
+      this.dueCount -= 1;
+    }
+
+    this.entriesByPath.delete(file.path);
+    this.dirtyFilesByPath.set(file.path, file);
+  }
+
+  removeFile(pathOrFile: string | TFile): void {
+    if (this.dueCount === null) return;
+
+    const path = typeof pathOrFile === "string" ? pathOrFile : pathOrFile.path;
+    const previous = this.entriesByPath.get(path);
+    if (previous?.due) {
+      this.dueCount -= 1;
+    }
+
+    this.entriesByPath.delete(path);
+    this.dirtyFilesByPath.delete(path);
+  }
+
+  renameFile(file: TFile, oldPath: string): void {
+    this.removeFile(oldPath);
+    this.invalidateFile(file);
+  }
+
+  countDue(now = new Date()): number {
+    if (this.dueCount !== null && this.countedDay !== localDayKey(now)) {
+      this.invalidateAll();
+    }
+
+    if (this.dueCount === null) {
+      return this.rebuild(now);
+    }
+
+    this.processDirtyFiles(now);
+    return this.dueCount;
+  }
+
+  private rebuild(now: Date): number {
+    this.entriesByPath.clear();
+    this.dirtyFilesByPath.clear();
+    this.dueCount = 0;
+    this.countedDay = localDayKey(now);
+
+    for (const file of this.app.vault.getMarkdownFiles()) {
+      const due = isDue(file, this.app, this.getSettings(), now);
+      this.entriesByPath.set(file.path, { file, due });
+      if (due) {
+        this.dueCount += 1;
+      }
+    }
+
+    return this.dueCount;
+  }
+
+  private processDirtyFiles(now: Date): void {
+    if (this.dirtyFilesByPath.size === 0 || this.dueCount === null) return;
+
+    for (const [path, file] of this.dirtyFilesByPath) {
+      const due = isDue(file, this.app, this.getSettings(), now);
+      this.entriesByPath.set(path, { file, due });
+      if (due) {
+        this.dueCount += 1;
+      }
+    }
+
+    this.dirtyFilesByPath.clear();
+  }
 }
