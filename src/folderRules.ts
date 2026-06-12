@@ -25,6 +25,66 @@ function migrateFolderPath(
   return folderPath;
 }
 
+function dedupeFolderList(paths: string[]): { paths: string[]; changed: boolean } {
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  let changed = false;
+
+  for (const path of paths) {
+    const normalized = normalizeFolderPath(path);
+    if (!normalized || seen.has(normalized)) {
+      changed = true;
+      continue;
+    }
+
+    if (normalized !== path) changed = true;
+    seen.add(normalized);
+    deduped.push(normalized);
+  }
+
+  return { paths: deduped, changed };
+}
+
+function dedupeFolderIntervals(rules: FolderInterval[]): {
+  rules: FolderInterval[];
+  changed: boolean;
+} {
+  const seen = new Set<string>();
+  const deduped: FolderInterval[] = [];
+  let changed = false;
+
+  for (const rule of rules) {
+    const folder = normalizeFolderPath(rule.folder);
+    if (!folder || seen.has(folder)) {
+      changed = true;
+      continue;
+    }
+
+    if (folder !== rule.folder) changed = true;
+    seen.add(folder);
+    deduped.push(folder === rule.folder ? rule : { ...rule, folder });
+  }
+
+  return { rules: deduped, changed };
+}
+
+export function normalizeFolderReviewRules(
+  settings: FolderReviewRuleSettings
+): boolean {
+  const excludedFolders = dedupeFolderList(settings.excludedFolders);
+  const includedFolders = dedupeFolderList(settings.includedFolders);
+  const folderIntervals = dedupeFolderIntervals(settings.folderIntervals);
+  const changed =
+    excludedFolders.changed || includedFolders.changed || folderIntervals.changed;
+
+  if (!changed) return false;
+
+  settings.excludedFolders = excludedFolders.paths;
+  settings.includedFolders = includedFolders.paths;
+  settings.folderIntervals = folderIntervals.rules;
+  return true;
+}
+
 export function migrateRenamedFolderReviewRules(
   settings: FolderReviewRuleSettings,
   oldPath: string,
@@ -59,5 +119,6 @@ export function migrateRenamedFolderReviewRules(
   settings.excludedFolders = excludedFolders;
   settings.includedFolders = includedFolders;
   settings.folderIntervals = folderIntervals;
+  normalizeFolderReviewRules(settings);
   return true;
 }

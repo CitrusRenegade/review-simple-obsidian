@@ -5,6 +5,7 @@ import {
   getEffectiveInterval,
   getLastReviewedDay,
   isDue,
+  ReviewedDayOverrideSource,
 } from "./review";
 import { ConfirmReviewModal } from "./modal";
 
@@ -13,18 +14,21 @@ export class ReviewStatusBar {
   private app: App;
   private getSettings: () => ReviewSettings;
   private markReviewed: (file: TFile) => Promise<void>;
+  private overrides?: ReviewedDayOverrideSource;
   private currentFile: TFile | null = null;
 
   constructor(
     statusBarEl: HTMLElement,
     app: App,
     getSettings: () => ReviewSettings,
-    markReviewed: (file: TFile) => Promise<void>
+    markReviewed: (file: TFile) => Promise<void>,
+    overrides?: ReviewedDayOverrideSource
   ) {
     this.el = statusBarEl;
     this.app = app;
     this.getSettings = getSettings;
     this.markReviewed = markReviewed;
+    this.overrides = overrides;
 
     this.el.addClass("review-status-bar");
     this.el.addEventListener("click", () => this.onClick());
@@ -52,11 +56,16 @@ export class ReviewStatusBar {
     }
 
     this.el.removeClass("review-hidden");
-    const lastReviewedDay = getLastReviewedDay(file, this.app, settings);
+    const lastReviewedDay = getLastReviewedDay(
+      file,
+      this.app,
+      settings,
+      this.overrides
+    );
 
     if (!lastReviewedDay) {
       this.el.setText("⚠ Not reviewed");
-    } else if (isDue(file, this.app, settings)) {
+    } else if (isDue(file, this.app, settings, new Date(), this.overrides)) {
       this.el.setText(`⚠ due · ${lastReviewedDay}`);
     } else {
       this.el.setText(`✓ ${lastReviewedDay}`);
@@ -85,11 +94,12 @@ export class DueCounterStatusBar {
     statusBarEl: HTMLElement,
     app: App,
     getSettings: () => ReviewSettings,
-    onClick: () => void
+    onClick: () => void,
+    overrides?: ReviewedDayOverrideSource
   ) {
     this.el = statusBarEl;
     this.getSettings = getSettings;
-    this.cache = new DueCounterCache(app, getSettings);
+    this.cache = new DueCounterCache(app, getSettings, overrides);
 
     this.el.addClass("review-due-counter");
     this.el.setAttribute("data-tooltip-position", "top");
@@ -129,5 +139,9 @@ export class DueCounterStatusBar {
 
   renameFile(file: TFile, oldPath: string): void {
     this.cache.renameFile(file, oldPath);
+  }
+
+  markReviewed(file: TFile): void {
+    this.cache.markReviewed(file);
   }
 }

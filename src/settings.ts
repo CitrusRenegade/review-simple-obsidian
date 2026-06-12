@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting, normalizePath } from "obsidian";
 import { parsePositiveDayCount } from "./interval";
+import { normalizeFolderReviewRules } from "./folderRules";
 import type ReviewPlugin from "./main";
 
 export interface FolderInterval {
@@ -81,7 +82,7 @@ function asFolderIntervals(value: unknown): FolderInterval[] {
 
 export function loadReviewSettings(data: unknown): ReviewSettings {
   const raw = isRecord(data) ? data : {};
-  return {
+  const settings = {
     globalIntervalDays: asPositiveDayCount(
       raw.globalIntervalDays,
       DEFAULT_SETTINGS.globalIntervalDays
@@ -111,6 +112,8 @@ export function loadReviewSettings(data: unknown): ReviewSettings {
       DEFAULT_SETTINGS.frontmatterReviewedKey
     ),
   };
+  normalizeFolderReviewRules(settings);
+  return settings;
 }
 
 export class ReviewSettingTab extends PluginSettingTab {
@@ -138,6 +141,13 @@ export class ReviewSettingTab extends PluginSettingTab {
       this.refreshTimeout = null;
       this.plugin.refreshReviewState();
     }, 500);
+  }
+
+  dispose(): void {
+    if (this.refreshTimeout !== null) {
+      activeWindow.clearTimeout(this.refreshTimeout);
+      this.refreshTimeout = null;
+    }
   }
 
   display(): void {
@@ -211,6 +221,7 @@ export class ReviewSettingTab extends PluginSettingTab {
             } else {
               this.plugin.settings.excludedFolders = parsed;
             }
+            normalizeFolderReviewRules(this.plugin.settings);
             await this.plugin.saveSettings();
             this.scheduleReviewStateRefresh();
           });
@@ -246,6 +257,7 @@ export class ReviewSettingTab extends PluginSettingTab {
                 if (!folder || days === null) return [];
                 return [{ folder: normalizePath(folder), days }];
               });
+            normalizeFolderReviewRules(this.plugin.settings);
             await this.plugin.saveSettings();
             this.scheduleReviewStateRefresh();
           });

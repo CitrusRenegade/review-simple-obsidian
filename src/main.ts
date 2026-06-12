@@ -14,7 +14,7 @@ import {
 } from "./settings";
 import { migrateRenamedFolderReviewRules } from "./folderRules";
 import { DueCounterStatusBar, ReviewStatusBar } from "./statusbar";
-import { getEffectiveInterval, pickRandomDue } from "./review";
+import { getEffectiveInterval, getLastReviewedDay, pickRandomDue } from "./review";
 import { setStringFrontmatter } from "./frontmatter";
 import { formatLocalDate } from "./dates";
 
@@ -25,9 +25,22 @@ export default class ReviewPlugin extends Plugin {
   private ribbonIconEl: HTMLElement | null = null;
   private settingTab: ReviewSettingTab | null = null;
   private dueCounterRefreshTimeout: number | null = null;
+  private localDayRefreshTimeout: number | null = null;
+  private currentLocalDay = formatLocalDate(new Date());
+  private reviewedDayOverrides = new Map<string, string>();
+
+  private readonly reviewedDayOverrideSource = {
+    getReviewedDayOverride: (file: TFile): string | null =>
+      this.reviewedDayOverrides.get(file.path) ?? null,
+  };
 
   private openRandomDue(): void {
-    const file = pickRandomDue(this.app, this.settings);
+    const file = pickRandomDue(
+      this.app,
+      this.settings,
+      Math.random,
+      this.reviewedDayOverrideSource
+    );
     if (!file) {
       new Notice("No notes due for review");
       return;
@@ -65,6 +78,40 @@ export default class ReviewPlugin extends Plugin {
       this.dueCounterRefreshTimeout = null;
       this.dueCounter?.update();
     }, 500);
+  }
+
+  private scheduleLocalDayRefresh(): void {
+    if (this.localDayRefreshTimeout !== null) {
+      activeWindow.clearTimeout(this.localDayRefreshTimeout);
+      this.localDayRefreshTimeout = null;
+    }
+
+    const now = new Date();
+    const nextLocalDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+      0,
+      0,
+      1
+    );
+    const delay = Math.max(1000, nextLocalDay.getTime() - now.getTime());
+
+    this.localDayRefreshTimeout = activeWindow.setTimeout(() => {
+      this.localDayRefreshTimeout = null;
+      this.currentLocalDay = formatLocalDate(new Date());
+      this.refreshReviewState();
+      this.scheduleLocalDayRefresh();
+    }, delay);
+  }
+
+  private refreshIfLocalDayChanged(): void {
+    const today = formatLocalDate(new Date());
+    if (today === this.currentLocalDay) return;
+
+    this.currentLocalDay = today;
+    this.refreshReviewState();
+    this.scheduleLocalDayRefresh();
   }
 
   private async handleVaultRename(
@@ -118,8 +165,9 @@ export default class ReviewPlugin extends Plugin {
       await this.app.fileManager.processFrontMatter(file, (fm) => {
         setStringFrontmatter(fm, this.settings.frontmatterReviewedKey, today);
       });
+      this.reviewedDayOverrides.set(file.path, today);
       new Notice("Marked as reviewed");
-      this.dueCounter?.invalidateFile(file);
+      this.dueCounter?.markReviewed(file);
       this.updateAll();
     } catch (e) {
       console.error("Failed to mark as reviewed:", e);
@@ -161,6 +209,7 @@ export default class ReviewPlugin extends Plugin {
 
     this.settingTab = new ReviewSettingTab(this.app, this);
     this.addSettingTab(this.settingTab);
+    this.register(() => this.settingTab?.dispose());
     this.updateRibbonIcon();
 
     const statusBarEl = this.addStatusBarItem();
@@ -169,7 +218,8 @@ export default class ReviewPlugin extends Plugin {
       statusBarEl,
       this.app,
       () => this.settings,
-      (file) => this.markReviewed(file)
+      (file) => this.markReviewed(file),
+      this.reviewedDayOverrideSource
     );
 
     const counterEl = this.addStatusBarItem();
@@ -178,7 +228,8 @@ export default class ReviewPlugin extends Plugin {
       counterEl,
       this.app,
       () => this.settings,
-      () => this.openRandomDue()
+      () => this.openRandomDue(),
+      this.reviewedDayOverrideSource
     );
 
     this.addCommand({
@@ -223,6 +274,14 @@ export default class ReviewPlugin extends Plugin {
 
     this.registerEvent(
       this.app.metadataCache.on("changed", (file: TFile) => {
+        const expectedReviewedDay = this.reviewedDayOverrides.get(file.path);
+        if (
+          expectedReviewedDay &&
+          getLastReviewedDay(file, this.app, this.settings) === expectedReviewedDay
+        ) {
+          this.reviewedDayOverrides.delete(file.path);
+        }
+
         const active = this.app.workspace.getActiveFile();
         if (active && file.path === active.path) {
           this.statusBar?.update(file);
@@ -243,6 +302,7 @@ export default class ReviewPlugin extends Plugin {
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
         if (file instanceof TFile) {
+          this.reviewedDayOverrides.delete(file.path);
           this.dueCounter?.removeFile(file);
         } else {
           this.dueCounter?.invalidateAll();
@@ -252,6 +312,11 @@ export default class ReviewPlugin extends Plugin {
     );
     this.registerEvent(
       this.app.vault.on("rename", (file, oldPath) => {
+        const reviewedDayOverride = this.reviewedDayOverrides.get(oldPath);
+        if (reviewedDayOverride && file instanceof TFile) {
+          this.reviewedDayOverrides.delete(oldPath);
+          this.reviewedDayOverrides.set(file.path, reviewedDayOverride);
+        }
         void this.handleVaultRename(file, oldPath);
       })
     );
@@ -261,8 +326,17 @@ export default class ReviewPlugin extends Plugin {
         activeWindow.clearTimeout(this.dueCounterRefreshTimeout);
         this.dueCounterRefreshTimeout = null;
       }
+      if (this.localDayRefreshTimeout !== null) {
+        activeWindow.clearTimeout(this.localDayRefreshTimeout);
+        this.localDayRefreshTimeout = null;
+      }
     });
 
+    this.registerDomEvent(activeWindow, "focus", () =>
+      this.refreshIfLocalDayChanged()
+    );
+
+    this.scheduleLocalDayRefresh();
     this.app.workspace.onLayoutReady(() => this.updateAll());
   }
 

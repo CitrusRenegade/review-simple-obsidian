@@ -9,6 +9,10 @@ export type ReviewDay = string;
 
 type RandomSource = () => number;
 
+export interface ReviewedDayOverrideSource {
+  getReviewedDayOverride(file: TFile): ReviewDay | null;
+}
+
 type CachedDueState = {
   file: TFile;
   due: boolean;
@@ -192,8 +196,12 @@ export function getEffectiveInterval(
 export function getLastReviewedDay(
   file: TFile,
   app: App,
-  settings: ReviewSettings
+  settings: ReviewSettings,
+  overrides?: ReviewedDayOverrideSource
 ): ReviewDay | null {
+  const override = overrides?.getReviewedDayOverride(file);
+  if (override) return override;
+
   const fm = getFrontmatter(file, app);
   return parseReviewDay(fm[settings.frontmatterReviewedKey]);
 }
@@ -202,11 +210,12 @@ export function isDue(
   file: TFile,
   app: App,
   settings: ReviewSettings,
-  now = new Date()
+  now = new Date(),
+  overrides?: ReviewedDayOverrideSource
 ): boolean {
   const interval = getEffectiveInterval(file, app, settings);
   if (interval === null) return false;
-  const lastReviewedDay = getLastReviewedDay(file, app, settings);
+  const lastReviewedDay = getLastReviewedDay(file, app, settings, overrides);
   if (!lastReviewedDay) return true;
   return getCalendarDaysSince(lastReviewedDay, now) >= interval;
 }
@@ -227,27 +236,29 @@ export function getReviewableFiles(
 export function getDueFiles(
   app: App,
   settings: ReviewSettings,
-  now = new Date()
+  now = new Date(),
+  overrides?: ReviewedDayOverrideSource
 ): TFile[] {
   return getReviewableFiles(app, settings).filter((f) =>
-    isDue(f, app, settings, now)
+    isDue(f, app, settings, now, overrides)
   );
 }
 
 export function pickRandomDue(
   app: App,
   settings: ReviewSettings,
-  random: RandomSource = Math.random
+  random: RandomSource = Math.random,
+  overrides?: ReviewedDayOverrideSource
 ): TFile | null {
   const now = new Date();
-  const due = getDueFiles(app, settings, now);
+  const due = getDueFiles(app, settings, now, overrides);
   return pickTournamentWinner(
     due,
     (file) => {
       const interval = getEffectiveInterval(file, app, settings);
       if (interval === null) return Number.NEGATIVE_INFINITY;
       return getOverdueRatioScore(
-        getLastReviewedDay(file, app, settings),
+        getLastReviewedDay(file, app, settings, overrides),
         interval,
         now
       );
@@ -263,14 +274,20 @@ export function countDue(app: App, settings: ReviewSettings): number {
 export class DueCounterCache {
   private app: App;
   private getSettings: () => ReviewSettings;
+  private overrides?: ReviewedDayOverrideSource;
   private entriesByPath = new Map<string, CachedDueState>();
   private dirtyFilesByPath = new Map<string, TFile>();
   private dueCount: number | null = null;
   private countedDay: string | null = null;
 
-  constructor(app: App, getSettings: () => ReviewSettings) {
+  constructor(
+    app: App,
+    getSettings: () => ReviewSettings,
+    overrides?: ReviewedDayOverrideSource
+  ) {
     this.app = app;
     this.getSettings = getSettings;
+    this.overrides = overrides;
   }
 
   invalidateAll(): void {
@@ -310,6 +327,18 @@ export class DueCounterCache {
     this.invalidateFile(file);
   }
 
+  markReviewed(file: TFile): void {
+    if (file.extension !== "md" || this.dueCount === null) return;
+
+    const previous = this.entriesByPath.get(file.path);
+    if (previous?.due) {
+      this.dueCount -= 1;
+    }
+
+    this.entriesByPath.set(file.path, { file, due: false });
+    this.dirtyFilesByPath.delete(file.path);
+  }
+
   countDue(now = new Date()): number {
     if (this.dueCount !== null && this.countedDay !== localDayKey(now)) {
       this.invalidateAll();
@@ -330,7 +359,7 @@ export class DueCounterCache {
     this.countedDay = localDayKey(now);
 
     for (const file of this.app.vault.getMarkdownFiles()) {
-      const due = isDue(file, this.app, this.getSettings(), now);
+      const due = isDue(file, this.app, this.getSettings(), now, this.overrides);
       this.entriesByPath.set(file.path, { file, due });
       if (due) {
         this.dueCount += 1;
@@ -344,7 +373,7 @@ export class DueCounterCache {
     if (this.dirtyFilesByPath.size === 0 || this.dueCount === null) return;
 
     for (const [path, file] of this.dirtyFilesByPath) {
-      const due = isDue(file, this.app, this.getSettings(), now);
+      const due = isDue(file, this.app, this.getSettings(), now, this.overrides);
       this.entriesByPath.set(path, { file, due });
       if (due) {
         this.dueCount += 1;

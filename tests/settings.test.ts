@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { migrateRenamedFolderReviewRules } from "../src/folderRules";
+import {
+  migrateRenamedFolderReviewRules,
+  normalizeFolderReviewRules,
+} from "../src/folderRules";
 import type { ReviewSettings } from "../src/settings";
 
 const baseSettings: ReviewSettings = {
@@ -94,4 +97,45 @@ describe("migrateRenamedFolderReviewRules", () => {
     ).toBe(false);
     expect(settings.excludedFolders).toEqual(["Projects"]);
   });
+
+  it("deduplicates folder review settings with first-wins interval behavior", () => {
+    const settings: ReviewSettings = {
+      ...baseSettings,
+      excludedFolders: ["Projects", "Projects", "Archive"],
+      includedFolders: ["Notes", "Notes"],
+      folderIntervals: [
+        { folder: "Projects", days: 30 },
+        { folder: "Projects", days: 7 },
+        { folder: "Projects/Sub", days: 14 },
+      ],
+    };
+
+    expect(normalizeFolderReviewRules(settings)).toBe(true);
+    expect(settings.excludedFolders).toEqual(["Projects", "Archive"]);
+    expect(settings.includedFolders).toEqual(["Notes"]);
+    expect(settings.folderIntervals).toEqual([
+      { folder: "Projects", days: 30 },
+      { folder: "Projects/Sub", days: 14 },
+    ]);
+  });
+
+  it("deduplicates renamed folder rule collisions", () => {
+    const settings: ReviewSettings = {
+      ...baseSettings,
+      excludedFolders: ["Work", "Projects"],
+      includedFolders: [],
+      folderIntervals: [
+        { folder: "Work", days: 30 },
+        { folder: "Projects", days: 7 },
+      ],
+    };
+
+    expect(
+      migrateRenamedFolderReviewRules(settings, "Projects", "Work")
+    ).toBe(true);
+
+    expect(settings.excludedFolders).toEqual(["Work"]);
+    expect(settings.folderIntervals).toEqual([{ folder: "Work", days: 30 }]);
+  });
+
 });
