@@ -126,6 +126,7 @@ export function loadReviewSettings(data: unknown): ReviewSettings {
 export class ReviewSettingTab extends PluginSettingTab {
   plugin: ReviewPlugin;
   private refreshTimeout: number | null = null;
+  private saveTimeout: number | null = null;
 
   constructor(app: App, plugin: ReviewPlugin) {
     super(app, plugin);
@@ -150,10 +151,33 @@ export class ReviewSettingTab extends PluginSettingTab {
     }, 500);
   }
 
+  private async saveSettingsNow(): Promise<void> {
+    try {
+      await this.plugin.saveSettings();
+    } catch (e) {
+      console.error("Failed to save review settings:", e);
+    }
+  }
+
+  private scheduleSettingsSave(): void {
+    if (this.saveTimeout !== null) {
+      activeWindow.clearTimeout(this.saveTimeout);
+    }
+    this.saveTimeout = activeWindow.setTimeout(() => {
+      this.saveTimeout = null;
+      void this.saveSettingsNow();
+    }, 500);
+  }
+
   dispose(): void {
     if (this.refreshTimeout !== null) {
       activeWindow.clearTimeout(this.refreshTimeout);
       this.refreshTimeout = null;
+    }
+    if (this.saveTimeout !== null) {
+      activeWindow.clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+      void this.saveSettingsNow();
     }
   }
 
@@ -217,7 +241,7 @@ export class ReviewSettingTab extends PluginSettingTab {
             isIncluded ? "Notes\nJournal" : "Templates\nAttachments\nArchive"
           )
           .setValue(currentList.join("\n"))
-          .onChange(async (value) => {
+          .onChange((value) => {
             const parsed = value
               .split("\n")
               .map((s) => s.trim())
@@ -229,7 +253,7 @@ export class ReviewSettingTab extends PluginSettingTab {
               this.plugin.settings.excludedFolders = parsed;
             }
             normalizeFolderReviewRules(this.plugin.settings);
-            await this.plugin.saveSettings();
+            this.scheduleSettingsSave();
             this.scheduleReviewStateRefresh();
           });
         text.inputEl.rows = 5;
@@ -251,7 +275,7 @@ export class ReviewSettingTab extends PluginSettingTab {
               .map((r) => `${r.folder},${r.days}`)
               .join("\n")
           )
-          .onChange(async (value) => {
+          .onChange((value) => {
             this.plugin.settings.folderIntervals = value
               .split("\n")
               .map((line) => line.trim())
@@ -265,7 +289,7 @@ export class ReviewSettingTab extends PluginSettingTab {
                 return [{ folder: normalizePath(folder), days }];
               });
             normalizeFolderReviewRules(this.plugin.settings);
-            await this.plugin.saveSettings();
+            this.scheduleSettingsSave();
             this.scheduleReviewStateRefresh();
           });
         text.inputEl.rows = 5;
