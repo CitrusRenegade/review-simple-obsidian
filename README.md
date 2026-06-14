@@ -19,7 +19,7 @@ Helps you reread and refine your notes on a recurring schedule. Last review date
 
 ## Quick start
 
-1. Install **Review Simple** from Obsidian's Community Plugins directory.
+1. Install **Review Simple** from [Obsidian's Community Plugins](https://community.obsidian.md/plugins/review-simple).
 2. Set folders to review and mode that fits your needs.
 3. Choose a review interval (in days).
 4. Reread to refine. Open a random due note via command palette, or by clicking the counter in the status bar.
