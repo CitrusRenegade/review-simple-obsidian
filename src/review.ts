@@ -13,6 +13,17 @@ export interface ReviewedDayOverrideSource {
   getReviewedDayOverride(file: TFile): ReviewDay | null;
 }
 
+export type ReviewIntervalCandidate =
+  | { kind: "note"; days: number; applied: boolean }
+  | { kind: "folder"; folder: string; days: number; applied: boolean }
+  | { kind: "default"; days: number; applied: boolean };
+
+export interface ReviewIntervalCalculation {
+  mode: ReviewSettings["folderFilterMode"];
+  effectiveIntervalDays: number | null;
+  candidates: ReviewIntervalCandidate[];
+}
+
 type CachedDueState = {
   file: TFile;
   due: boolean;
@@ -176,6 +187,52 @@ export function getFolderInterval(
   return best ? best.days : null;
 }
 
+export function getReviewIntervalCalculation(
+  file: TFile,
+  app: App,
+  settings: ReviewSettings
+): ReviewIntervalCalculation {
+  const local = getLocalInterval(file, app, settings);
+  const matchingFolderRules = settings.folderIntervals
+    .filter((rule) => file.path.startsWith(rule.folder + "/"))
+    .sort((left, right) => right.folder.length - left.folder.length);
+  const effectiveIntervalDays =
+    typeof local === "number"
+      ? local
+      : local === "never" || isExcluded(file, settings)
+        ? null
+        : matchingFolderRules[0]?.days ?? settings.globalIntervalDays;
+  const candidates: ReviewIntervalCandidate[] = [];
+
+  if (typeof local === "number") {
+    candidates.push({ kind: "note", days: local, applied: true });
+  }
+
+  matchingFolderRules.forEach((rule, index) => {
+    candidates.push({
+      kind: "folder",
+      folder: rule.folder,
+      days: rule.days,
+      applied: typeof local !== "number" && effectiveIntervalDays !== null && index === 0,
+    });
+  });
+
+  candidates.push({
+    kind: "default",
+    days: settings.globalIntervalDays,
+    applied:
+      typeof local !== "number" &&
+      effectiveIntervalDays !== null &&
+      matchingFolderRules.length === 0,
+  });
+
+  return {
+    mode: settings.folderFilterMode,
+    effectiveIntervalDays,
+    candidates,
+  };
+}
+
 export function getEffectiveInterval(
   file: TFile,
   app: App,
@@ -327,7 +384,16 @@ export class DueCounterCache {
     this.invalidateFile(file);
   }
 
-  markReviewed(file: TFile): void {
+  markReviewed(file: TFile, currentFile: TFile | null = file): void {
+    if (currentFile !== file) {
+      if (currentFile) {
+        this.invalidateFile(currentFile);
+      } else {
+        this.removeFile(file.path);
+      }
+      return;
+    }
+
     if (file.extension !== "md" || this.dueCount === null) return;
 
     const previous = this.entriesByPath.get(file.path);

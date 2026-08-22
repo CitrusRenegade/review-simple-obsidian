@@ -7,21 +7,23 @@ import {
   isDue,
   ReviewedDayOverrideSource,
 } from "./review";
-import { ConfirmReviewModal } from "./modal";
+import { getReviewDetails } from "./reviewDetails";
+import { ReviewDetailsPopover } from "./reviewDetailsPopover";
 
 export class ReviewStatusBar {
   private el: HTMLElement;
   private app: App;
   private getSettings: () => ReviewSettings;
-  private markReviewed: (file: TFile) => Promise<void>;
+  private markReviewed: (file: TFile) => Promise<boolean>;
   private overrides?: ReviewedDayOverrideSource;
   private currentFile: TFile | null = null;
+  private popover: ReviewDetailsPopover | null = null;
 
   constructor(
     statusBarEl: HTMLElement,
     app: App,
     getSettings: () => ReviewSettings,
-    markReviewed: (file: TFile) => Promise<void>,
+    markReviewed: (file: TFile) => Promise<boolean>,
     overrides?: ReviewedDayOverrideSource
   ) {
     this.el = statusBarEl;
@@ -31,10 +33,18 @@ export class ReviewStatusBar {
     this.overrides = overrides;
 
     this.el.addClass("review-status-bar");
-    this.el.addEventListener("click", () => this.onClick());
+    this.el.setAttribute("role", "button");
+    this.el.tabIndex = 0;
+    this.el.addEventListener("click", () => this.openDetails());
+    this.el.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      this.openDetails();
+    });
   }
 
-  update(file: TFile | null): void {
+  update(file: TFile | null, preserveDetails = false): void {
+    if (!preserveDetails) this.closeDetails(false);
     this.currentFile = file;
     const settings = this.getSettings();
 
@@ -72,15 +82,44 @@ export class ReviewStatusBar {
     }
   }
 
-  private onClick(): void {
-    const file = this.currentFile;
+  openDetails(
+    file: TFile | null = this.currentFile,
+    popupDocument: Document = this.el.ownerDocument,
+    anchorEl: HTMLElement | null = this.el
+  ): void {
     if (!file || file.extension !== "md") return;
 
     const settings = this.getSettings();
-    const interval = getEffectiveInterval(file, this.app, settings);
-    if (interval === null) return;
+    const details = getReviewDetails(
+      file,
+      this.app,
+      settings,
+      new Date(),
+      this.overrides
+    );
+    if (!details) return;
 
-    new ConfirmReviewModal(this.app, file, () => this.markReviewed(file)).open();
+    this.closeDetails(false);
+    const popover = new ReviewDetailsPopover(
+      popupDocument,
+      anchorEl,
+      details,
+      () => this.markReviewed(file),
+      () => {
+        if (this.popover === popover) this.popover = null;
+      }
+    );
+    this.popover = popover;
+    popover.load();
+  }
+
+  dispose(): void {
+    this.closeDetails(false);
+  }
+
+  closeDetails(restoreFocus = true): void {
+    this.popover?.close(restoreFocus);
+    this.popover = null;
   }
 }
 
@@ -141,7 +180,7 @@ export class DueCounterStatusBar {
     this.cache.renameFile(file, oldPath);
   }
 
-  markReviewed(file: TFile): void {
-    this.cache.markReviewed(file);
+  markReviewed(file: TFile, currentFile: TFile | null = file): void {
+    this.cache.markReviewed(file, currentFile);
   }
 }

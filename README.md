@@ -9,7 +9,7 @@ Helps you reread and refine your notes on a recurring schedule. Last review date
 - Per-note status bar indicator: `✓ 2025-11-04`, `⚠ due · 2025-09-10`, or `⚠ not reviewed`.
 - Folder filter: **excluded** mode or **included**-only mode for batch review scope. Both lists preserved when switching.
 - Intervals can be set at three levels: global default, per-folder rules, per-note frontmatter overrides.
-- Mark as reviewed via status bar click or command palette.
+- Review the active note's schedule and mark it reviewed from the status bar popup, or mark it directly from the command palette.
 - Data stored in note frontmatter — no external database.
 - Vault-wide counter of notes currently due for review.
 
@@ -23,7 +23,7 @@ Helps you reread and refine your notes on a recurring schedule. Last review date
 2. Set folders to review and mode that fits your needs.
 3. Choose a review interval (in days).
 4. Reread to refine. Open a random due note via command palette, or by clicking the counter in the status bar.
-5. Mark it reviewed the same way — command palette or click the per-note indicator.
+5. Click the per-note indicator to review its schedule, then choose **Mark reviewed**. To skip the details, use the command palette.
 
 For unreleased builds from `master`, install `CitrusRenegade/review-simple-obsidian` through BRAT.
 
@@ -65,7 +65,7 @@ review_interval: 14
 
 ## UI actions
 
-- Clicking the per-note status bar **review indicator** marks the active note as reviewed today. This status is shown when the active note is included in review.
+- Clicking the per-note status bar **review indicator** opens its review timing and interval calculation. Choose **Mark reviewed** in the popup to write today's date. The indicator is shown when the active note is included in review.
 - Clicking the **due counter** status bar icon opens a random due note. The counter is hidden when there are no due notes.
 - Clicking the **ribbon icon** opens a random due note.
 - The **folder context menu** can exclude a folder from review when folder filtering is in **excluded** mode.

@@ -7,6 +7,7 @@ import {
   getEffectiveInterval,
   getLastReviewedDay,
   getOverdueRatioScore,
+  getReviewIntervalCalculation,
   getReviewableFiles,
   isDue,
   NEVER_REVIEWED_RANDOM_SCORE,
@@ -139,6 +140,26 @@ describe("pickTournamentWinner", () => {
 });
 
 describe("getEffectiveInterval", () => {
+  it("keeps note overrides on the fast path without building folder candidates", () => {
+    const target = file("Projects/Active/a.md");
+    const settingsWithGuardedFolderIntervals = {
+      ...baseSettings,
+      get folderIntervals(): ReviewSettings["folderIntervals"] {
+        throw new Error("folder interval candidates should not be read");
+      },
+    };
+
+    expect(
+      getEffectiveInterval(
+        target,
+        appWithFrontmatter({
+          "Projects/Active/a.md": { review_interval: 60 },
+        }),
+        settingsWithGuardedFolderIntervals
+      )
+    ).toBe(60);
+  });
+
   it("lets frontmatter interval include notes outside included-only folders", () => {
     const interval = getEffectiveInterval(
       file("Notes/a.md"),
@@ -266,6 +287,79 @@ describe("getEffectiveInterval", () => {
         settings
       )
     ).toBe(8);
+  });
+});
+
+describe("getReviewIntervalCalculation", () => {
+  const layeredSettings: ReviewSettings = {
+    ...baseSettings,
+    globalIntervalDays: 90,
+    folderFilterMode: "included",
+    includedFolders: ["Projects"],
+    folderIntervals: [
+      { folder: "Projects", days: 20 },
+      { folder: "Projects/Active", days: 30 },
+      { folder: "Other", days: 10 },
+    ],
+  };
+
+  it("keeps matching interval candidates visible while a note override wins", () => {
+    const calculation = getReviewIntervalCalculation(
+      file("Projects/Active/a.md"),
+      appWithFrontmatter({
+        "Projects/Active/a.md": { review_interval: 60 },
+      }),
+      layeredSettings
+    );
+
+    expect(calculation).toEqual({
+      mode: "included",
+      effectiveIntervalDays: 60,
+      candidates: [
+        { kind: "note", days: 60, applied: true },
+        {
+          kind: "folder",
+          folder: "Projects/Active",
+          days: 30,
+          applied: false,
+        },
+        {
+          kind: "folder",
+          folder: "Projects",
+          days: 20,
+          applied: false,
+        },
+        { kind: "default", days: 90, applied: false },
+      ],
+    });
+  });
+
+  it("applies the most specific matching folder interval without a note override", () => {
+    const calculation = getReviewIntervalCalculation(
+      file("Projects/Active/a.md"),
+      appWithFrontmatter({ "Projects/Active/a.md": {} }),
+      layeredSettings
+    );
+
+    expect(calculation).toEqual({
+      mode: "included",
+      effectiveIntervalDays: 30,
+      candidates: [
+        {
+          kind: "folder",
+          folder: "Projects/Active",
+          days: 30,
+          applied: true,
+        },
+        {
+          kind: "folder",
+          folder: "Projects",
+          days: 20,
+          applied: false,
+        },
+        { kind: "default", days: 90, applied: false },
+      ],
+    });
   });
 });
 
@@ -483,6 +577,29 @@ describe("DueCounterCache", () => {
     );
     expect(isDue(a, app, baseSettings, NOW, overrideSource)).toBe(false);
     expect(cache.countDue(NOW)).toBe(0);
+  });
+
+  it("does not apply a completed mark to a replacement at the same path", () => {
+    const original = file("Notes/a.md");
+    const replacement = file("Notes/a.md");
+    let files = [original];
+    const app = {
+      metadataCache: {
+        getFileCache: () => ({ frontmatter: {} }),
+      },
+      vault: {
+        getMarkdownFiles: () => files,
+      },
+    } as unknown as App;
+    const cache = new DueCounterCache(app, () => baseSettings);
+
+    expect(cache.countDue(NOW)).toBe(1);
+    files = [replacement];
+    cache.removeFile(original);
+    cache.invalidateFile(replacement);
+    cache.markReviewed(original, replacement);
+
+    expect(cache.countDue(NOW)).toBe(1);
   });
 
   it("excludes reviewed-day overrides from random due picks", () => {
