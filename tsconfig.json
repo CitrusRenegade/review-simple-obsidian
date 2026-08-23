@@ -4,11 +4,12 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
-    "target": "ES6",
+    "target": "ES2018",
     "allowSyntheticDefaultImports": true,
     "moduleResolution": "node",
     "strict": true,
-    "lib": ["ES6", "DOM"]
+    "lib": ["ES2022", "DOM"],
+    "types": []
   },
   "include": ["src/**/*.ts"]
 }

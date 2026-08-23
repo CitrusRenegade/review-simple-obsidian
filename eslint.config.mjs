@@ -10,10 +10,6 @@ export default defineConfig([
       parser: tsparser,
       parserOptions: { project: "./tsconfig.eslint.json" },
     },
-    rules: {
-      "@typescript-eslint/no-unsafe-member-access": "off",
-      "@typescript-eslint/no-unsafe-assignment": "off",
-    },
   },
   {
     files: ["tests/**/*.ts"],
