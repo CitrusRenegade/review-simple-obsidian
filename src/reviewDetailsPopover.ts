@@ -42,7 +42,8 @@ export class ReviewDetailsPopover extends Component {
       doc.activeElement instanceof doc.defaultView!.HTMLElement
         ? doc.activeElement
         : null;
-    const root = doc.createElement("div");
+    const popupWindow = doc.win as Window & { createDiv(): HTMLDivElement };
+    const root = popupWindow.createDiv();
     root.addClass("review-details-popover");
     root.setAttribute("role", "dialog");
     root.setAttribute("aria-label", "Review details");
