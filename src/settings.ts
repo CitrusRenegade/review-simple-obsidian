@@ -194,16 +194,7 @@ export class ReviewSettingTab extends PluginSettingTab {
   }
 
   refresh(): void {
-    const runtimeTab = this as unknown as { update?: () => void };
-    if (runtimeTab.update) {
-      runtimeTab.update.call(this);
-      return;
-    }
-    this.renderLegacySettings();
-  }
-
-  display(): void {
-    this.renderLegacySettings();
+    this.update();
   }
 
   getSettingDefinitions(): SettingDefinitionItem[] {
@@ -230,22 +221,6 @@ export class ReviewSettingTab extends PluginSettingTab {
       }
     }
     return definitions;
-  }
-
-  private renderLegacySettings(): void {
-    const { containerEl } = this;
-    containerEl.empty();
-
-    for (const section of this.getSettingSections()) {
-      if (section.heading) {
-        new Setting(containerEl).setName(section.heading).setHeading();
-      }
-      for (const definition of section.items) {
-        const setting = new Setting(containerEl).setName(definition.label);
-        if (definition.description) setting.setDesc(definition.description);
-        definition.render(setting);
-      }
-    }
   }
 
   private getSettingSections(): ReviewSettingSection[] {
