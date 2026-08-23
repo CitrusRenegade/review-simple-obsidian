@@ -306,7 +306,7 @@ export class ReviewSettingTab extends PluginSettingTab {
             },
           },
           {
-            label: "Excluded / included folders",
+            label: isIncluded ? "Mode: include" : "Mode: exclude",
             aliases: ["mode", "include", "exclude"],
             description: createFragment((el) => {
               el.appendText("OFF — listed folders are excluded by default.");

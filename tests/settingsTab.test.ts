@@ -16,6 +16,7 @@ import { ReviewSettingTab, type ReviewSettings } from "../src/settings";
 type Definition = {
   name?: string;
   aliases?: string[];
+  render?: (setting: ModeSetting) => void;
   control?: {
     type: string;
     key: string;
@@ -24,6 +25,15 @@ type Definition = {
     validate?: (value: unknown) => string | void;
   };
   items?: Definition[];
+};
+
+type ModeToggle = {
+  setValue(value: boolean): ModeToggle;
+  onChange(callback: (value: boolean) => Promise<void>): ModeToggle;
+};
+
+type ModeSetting = {
+  addToggle(callback: (toggle: ModeToggle) => unknown): void;
 };
 
 const settings: ReviewSettings = {
@@ -59,8 +69,10 @@ function createTab() {
     refreshReviewState: vi.fn(),
     updateRibbonIcon: vi.fn(),
   };
+  const update = vi.fn();
   const tab = new ReviewSettingTab({} as App, plugin as never);
-  return { plugin, tab };
+  tab.update = update;
+  return { plugin, tab, update };
 }
 
 beforeEach(() => {
@@ -128,9 +140,35 @@ describe("ReviewSettingTab declarative controls", () => {
       type: "text",
       key: "frontmatterReviewedKey",
     });
-    expect(definitionByName(definitions, "Excluded / included folders").aliases).toEqual(
+    expect(definitionByName(definitions, "Mode: exclude").aliases).toEqual(
       expect.arrayContaining(["mode", "include", "exclude"])
     );
+  });
+
+  it("updates the folder filter label after its toggle changes mode", async () => {
+    const { tab, update } = createTab();
+    const mode = definitionByName(tab.getSettingDefinitions() as Definition[], "Mode: exclude");
+    let onChange: ((value: boolean) => Promise<void>) | undefined;
+    const toggle: ModeToggle = {
+      setValue: () => toggle,
+      onChange: (callback) => {
+        onChange = callback;
+        return toggle;
+      },
+    };
+
+    mode.render?.({
+      addToggle: (callback) => {
+        callback(toggle);
+      },
+    });
+
+    if (!onChange) throw new Error("Mode toggle did not register a change handler");
+
+    await onChange(true);
+
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(definitionByName(tab.getSettingDefinitions() as Definition[], "Mode: include")).toBeDefined();
   });
 
   it("persists declarative control changes and keeps their UI side effects", async () => {
