@@ -1,5 +1,9 @@
 import { App, PluginSettingTab, Setting, normalizePath } from "obsidian";
-import type { SettingDefinitionItem } from "obsidian";
+import type {
+  SettingControl,
+  SettingDefinition,
+  SettingDefinitionItem,
+} from "obsidian";
 import { parsePositiveDayCount } from "./interval";
 import { normalizeFolderReviewRules } from "./folderRules";
 import { isValidFrontmatterKey } from "./frontmatterKey";
@@ -38,11 +42,21 @@ export const DEFAULT_SETTINGS: ReviewSettings = {
   frontmatterReviewedKey: "reviewed",
 };
 
-interface ReviewSettingDefinition {
-  label: string;
-  description?: string | DocumentFragment;
-  render: (setting: Setting) => void;
-}
+type ReviewSettingDefinition =
+  | {
+      label: string;
+      description?: string | DocumentFragment;
+      aliases?: string[];
+      control: SettingControl<keyof ReviewSettings>;
+      render?: undefined;
+    }
+  | {
+      label: string;
+      description?: string | DocumentFragment;
+      aliases?: string[];
+      render: (setting: Setting) => void;
+      control?: undefined;
+    };
 
 interface ReviewSettingSection {
   heading?: string;
@@ -77,6 +91,18 @@ function asFolderFilterMode(value: unknown): FolderFilterMode {
   return value === "included" || value === "excluded"
     ? value
     : DEFAULT_SETTINGS.folderFilterMode;
+}
+
+function validatePositiveDayCount(value: number): string | void {
+  return Number.isSafeInteger(value) && value > 0
+    ? undefined
+    : "Enter a whole number of days.";
+}
+
+function validateFrontmatterKey(value: string): string | void {
+  return isValidFrontmatterKey(value.trim())
+    ? undefined
+    : "Enter a simple YAML field name.";
 }
 
 function asPathList(value: unknown): string[] {
@@ -197,27 +223,63 @@ export class ReviewSettingTab extends PluginSettingTab {
     this.update();
   }
 
+  getControlValue(key: string): unknown {
+    return this.plugin.settings[key as keyof ReviewSettings];
+  }
+
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    const settings = this.plugin.settings;
+
+    if (key === "globalIntervalDays" && typeof value === "number") {
+      if (validatePositiveDayCount(value) !== undefined) return;
+      settings.globalIntervalDays = value;
+    } else if (
+      (key === "showReviewStatus" || key === "showDueCounter" || key === "showRibbonIcon") &&
+      typeof value === "boolean"
+    ) {
+      settings[key] = value;
+    } else if (
+      (key === "frontmatterIntervalKey" || key === "frontmatterReviewedKey") &&
+      typeof value === "string"
+    ) {
+      const frontmatterKey = value.trim();
+      if (validateFrontmatterKey(frontmatterKey) !== undefined) return;
+      settings[key] = frontmatterKey;
+    } else {
+      return;
+    }
+
+    await this.plugin.saveSettings();
+    if (key === "showRibbonIcon") {
+      this.plugin.updateRibbonIcon();
+    } else {
+      this.refreshReviewState();
+    }
+  }
+
   getSettingDefinitions(): SettingDefinitionItem[] {
+    const toDefinition = (
+      item: ReviewSettingDefinition
+    ): SettingDefinition<keyof ReviewSettings> => {
+      const base = {
+        name: item.label,
+        desc: item.description,
+        aliases: item.aliases,
+      };
+      return item.control !== undefined
+        ? { ...base, control: item.control }
+        : { ...base, render: item.render };
+    };
     const definitions: SettingDefinitionItem[] = [];
     for (const section of this.getSettingSections()) {
       if (section.heading) {
         definitions.push({
           type: "group",
           heading: section.heading,
-          items: section.items.map((item) => ({
-            name: item.label,
-            desc: item.description,
-            render: item.render,
-          })),
+          items: section.items.map(toDefinition),
         });
       } else {
-        definitions.push(
-          ...section.items.map((item) => ({
-            name: item.label,
-            desc: item.description,
-            render: item.render,
-          }))
-        );
+        definitions.push(...section.items.map(toDefinition));
       }
     }
     return definitions;
@@ -233,24 +295,19 @@ export class ReviewSettingTab extends PluginSettingTab {
             label: "Global review interval",
             description:
               "Default number of days for reviewed notes without a per-note or folder interval.",
-            render: (setting) => {
-              setting.addText((text) =>
-                text
-                  .setPlaceholder("45")
-                  .setValue(String(this.plugin.settings.globalIntervalDays))
-                  .onChange(async (value) => {
-                    const n = parsePositiveDayCount(value);
-                    if (n !== null) {
-                      this.plugin.settings.globalIntervalDays = n;
-                      await this.plugin.saveSettings();
-                      this.refreshReviewState();
-                    }
-                  })
-              );
+            aliases: ["days", "due", "schedule"],
+            control: {
+              type: "number",
+              key: "globalIntervalDays",
+              min: 1,
+              step: 1,
+              placeholder: "45",
+              validate: validatePositiveDayCount,
             },
           },
           {
             label: "Excluded / included folders",
+            aliases: ["mode", "include", "exclude"],
             description: createFragment((el) => {
               el.appendText("OFF — listed folders are excluded by default.");
               el.createEl("br");
@@ -356,48 +413,30 @@ export class ReviewSettingTab extends PluginSettingTab {
             label: "Review status in status bar",
             description:
               "Shows per-file review indicator (last review date / due / not reviewed) for the active note.",
-            render: (setting) => {
-              setting.addToggle((toggle) =>
-                toggle
-                  .setValue(this.plugin.settings.showReviewStatus)
-                  .onChange(async (value) => {
-                    this.plugin.settings.showReviewStatus = value;
-                    await this.plugin.saveSettings();
-                    this.refreshReviewState();
-                  })
-              );
+            aliases: ["status", "indicator"],
+            control: {
+              type: "toggle",
+              key: "showReviewStatus",
             },
           },
           {
             label: "Due counter in status bar",
             description:
               "Shows total count of notes due for review across vault, next to the current-note indicator.",
-            render: (setting) => {
-              setting.addToggle((toggle) =>
-                toggle
-                  .setValue(this.plugin.settings.showDueCounter)
-                  .onChange(async (value) => {
-                    this.plugin.settings.showDueCounter = value;
-                    await this.plugin.saveSettings();
-                    this.refreshReviewState();
-                  })
-              );
+            aliases: ["due", "pending", "count"],
+            control: {
+              type: "toggle",
+              key: "showDueCounter",
             },
           },
           {
             label: "Ribbon icon",
             description:
               "Adds a left ribbon button that opens a random note due for review.",
-            render: (setting) => {
-              setting.addToggle((toggle) =>
-                toggle
-                  .setValue(this.plugin.settings.showRibbonIcon)
-                  .onChange(async (value) => {
-                    this.plugin.settings.showRibbonIcon = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.updateRibbonIcon();
-                  })
-              );
+            aliases: ["ribbon", "button"],
+            control: {
+              type: "toggle",
+              key: "showRibbonIcon",
             },
           },
         ],
@@ -409,38 +448,22 @@ export class ReviewSettingTab extends PluginSettingTab {
             label: "Frontmatter interval key",
             description:
               'Frontmatter field for per-note interval override. Set to a number (days) to include the note, or "never" to exclude it.',
-            render: (setting) => {
-              setting.addText((text) =>
-                text
-                  .setValue(this.plugin.settings.frontmatterIntervalKey)
-                  .onChange(async (value) => {
-                    const v = value.trim();
-                    if (isValidFrontmatterKey(v)) {
-                      this.plugin.settings.frontmatterIntervalKey = v;
-                      await this.plugin.saveSettings();
-                      this.refreshReviewState();
-                    }
-                  })
-              );
+            aliases: ["YAML", "metadata", "review_interval"],
+            control: {
+              type: "text",
+              key: "frontmatterIntervalKey",
+              validate: validateFrontmatterKey,
             },
           },
           {
             label: "Frontmatter reviewed key",
             description:
               "Frontmatter field where the last review date is stored.",
-            render: (setting) => {
-              setting.addText((text) =>
-                text
-                  .setValue(this.plugin.settings.frontmatterReviewedKey)
-                  .onChange(async (value) => {
-                    const v = value.trim();
-                    if (isValidFrontmatterKey(v)) {
-                      this.plugin.settings.frontmatterReviewedKey = v;
-                      await this.plugin.saveSettings();
-                      this.refreshReviewState();
-                    }
-                  })
-              );
+            aliases: ["YAML", "metadata", "reviewed"],
+            control: {
+              type: "text",
+              key: "frontmatterReviewedKey",
+              validate: validateFrontmatterKey,
             },
           },
         ],
