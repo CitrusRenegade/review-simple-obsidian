@@ -1,4 +1,5 @@
 import { App, PluginSettingTab, Setting, normalizePath } from "obsidian";
+import type { SettingDefinitionItem } from "obsidian";
 import { parsePositiveDayCount } from "./interval";
 import { normalizeFolderReviewRules } from "./folderRules";
 import { isValidFrontmatterKey } from "./frontmatterKey";
@@ -36,6 +37,17 @@ export const DEFAULT_SETTINGS: ReviewSettings = {
   frontmatterIntervalKey: "review_interval",
   frontmatterReviewedKey: "reviewed",
 };
+
+interface ReviewSettingDefinition {
+  label: string;
+  description?: string | DocumentFragment;
+  render: (setting: Setting) => void;
+}
+
+interface ReviewSettingSection {
+  heading?: string;
+  items: ReviewSettingDefinition[];
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -182,206 +194,282 @@ export class ReviewSettingTab extends PluginSettingTab {
   }
 
   refresh(): void {
-    this.render();
+    const runtimeTab = this as unknown as { update?: () => void };
+    if (runtimeTab.update) {
+      runtimeTab.update.call(this);
+      return;
+    }
+    this.renderLegacySettings();
   }
 
   display(): void {
-    this.render();
+    this.renderLegacySettings();
   }
 
-  private render(): void {
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    const definitions: SettingDefinitionItem[] = [];
+    for (const section of this.getSettingSections()) {
+      if (section.heading) {
+        definitions.push({
+          type: "group",
+          heading: section.heading,
+          items: section.items.map((item) => ({
+            name: item.label,
+            desc: item.description,
+            render: item.render,
+          })),
+        });
+      } else {
+        definitions.push(
+          ...section.items.map((item) => ({
+            name: item.label,
+            desc: item.description,
+            render: item.render,
+          }))
+        );
+      }
+    }
+    return definitions;
+  }
+
+  private renderLegacySettings(): void {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl)
-      .setName("Global review interval")
-      .setDesc(
-        "Default number of days for reviewed notes without a per-note or folder interval."
-      )
-      .addText((text) =>
-        text
-          .setPlaceholder("45")
-          .setValue(String(this.plugin.settings.globalIntervalDays))
-          .onChange(async (value) => {
-            const n = parsePositiveDayCount(value);
-            if (n !== null) {
-              this.plugin.settings.globalIntervalDays = n;
-              await this.plugin.saveSettings();
-              this.refreshReviewState();
-            }
-          })
-      );
+    for (const section of this.getSettingSections()) {
+      if (section.heading) {
+        new Setting(containerEl).setName(section.heading).setHeading();
+      }
+      for (const definition of section.items) {
+        const setting = new Setting(containerEl).setName(definition.label);
+        if (definition.description) setting.setDesc(definition.description);
+        definition.render(setting);
+      }
+    }
+  }
 
-    new Setting(containerEl)
-      .setName("Excluded / included folders")
-      .setDesc(
-        createFragment((el) => {
-          el.appendText("OFF — listed folders are excluded by default.");
-          el.createEl("br");
-          el.appendText(
-            "ON — only listed folders are reviewed by default. Per-note intervals can still include individual notes."
-          );
-        })
-      )
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.folderFilterMode === "included")
-          .onChange(async (value) => {
-            this.plugin.settings.folderFilterMode = value
-              ? "included"
-              : "excluded";
-            await this.plugin.saveSettings();
-            this.refreshReviewState();
-            this.refresh();
-          })
-      );
-
+  private getSettingSections(): ReviewSettingSection[] {
     const isIncluded = this.plugin.settings.folderFilterMode === "included";
-    new Setting(containerEl)
-      .setName(isIncluded ? "Global included folders" : "Global excluded folders")
-      .setDesc("One path per line, relative to vault root. Per-note intervals override this list.")
-      .addTextArea((text) => {
-        const currentList = isIncluded
-          ? this.plugin.settings.includedFolders
-          : this.plugin.settings.excludedFolders;
-        text
-          .setPlaceholder(
-            isIncluded ? "Notes\nJournal" : "Templates\nAttachments\nArchive"
-          )
-          .setValue(currentList.join("\n"))
-          .onChange((value) => {
-            const parsed = value
-              .split("\n")
-              .map((s) => s.trim())
-              .filter(Boolean)
-              .map((s) => normalizePath(s));
-            if (isIncluded) {
-              this.plugin.settings.includedFolders = parsed;
-            } else {
-              this.plugin.settings.excludedFolders = parsed;
-            }
-            normalizeFolderReviewRules(this.plugin.settings);
-            this.scheduleSettingsSave();
-            this.scheduleReviewStateRefresh();
-          });
-        text.inputEl.rows = 5;
-        text.inputEl.addClass("review-settings-textarea");
-      });
 
-    new Setting(containerEl)
-      .setName("Folder-specific intervals")
-      .setDesc(
-        'Custom review intervals per folder. Format: "folder/path,days" — one rule per line. ' +
-          "Uses longest matching path when rules overlap. Example: Daily Notes,90"
-      )
-      .addTextArea((text) => {
-        text
-          .setPlaceholder("Notes,90\nprojects/portfolio,30")
-          .setValue(
-            this.plugin.settings.folderIntervals
-              .map((r) => `${r.folder},${r.days}`)
-              .join("\n")
-          )
-          .onChange((value) => {
-            this.plugin.settings.folderIntervals = value
-              .split("\n")
-              .map((line) => line.trim())
-              .filter(Boolean)
-              .flatMap((line) => {
-                const idx = line.lastIndexOf(",");
-                if (idx < 1) return [];
-                const folder = line.slice(0, idx).trim();
-                const days = parsePositiveDayCount(line.slice(idx + 1));
-                if (!folder || days === null) return [];
-                return [{ folder: normalizePath(folder), days }];
+    return [
+      {
+        items: [
+          {
+            label: "Global review interval",
+            description:
+              "Default number of days for reviewed notes without a per-note or folder interval.",
+            render: (setting) => {
+              setting.addText((text) =>
+                text
+                  .setPlaceholder("45")
+                  .setValue(String(this.plugin.settings.globalIntervalDays))
+                  .onChange(async (value) => {
+                    const n = parsePositiveDayCount(value);
+                    if (n !== null) {
+                      this.plugin.settings.globalIntervalDays = n;
+                      await this.plugin.saveSettings();
+                      this.refreshReviewState();
+                    }
+                  })
+              );
+            },
+          },
+          {
+            label: "Excluded / included folders",
+            description: createFragment((el) => {
+              el.appendText("OFF — listed folders are excluded by default.");
+              el.createEl("br");
+              el.appendText(
+                "ON — only listed folders are reviewed by default. Per-note intervals can still include individual notes."
+              );
+            }),
+            render: (setting) => {
+              setting.addToggle((toggle) =>
+                toggle
+                  .setValue(this.plugin.settings.folderFilterMode === "included")
+                  .onChange(async (value) => {
+                    this.plugin.settings.folderFilterMode = value
+                      ? "included"
+                      : "excluded";
+                    await this.plugin.saveSettings();
+                    this.refreshReviewState();
+                    this.refresh();
+                  })
+              );
+            },
+          },
+          {
+            label: isIncluded
+              ? "Global included folders"
+              : "Global excluded folders",
+            description:
+              "One path per line, relative to vault root. Per-note intervals override this list.",
+            render: (setting) => {
+              setting.addTextArea((text) => {
+                const currentList = isIncluded
+                  ? this.plugin.settings.includedFolders
+                  : this.plugin.settings.excludedFolders;
+                text
+                  .setPlaceholder(
+                    isIncluded
+                      ? "Notes\nJournal"
+                      : "Templates\nAttachments\nArchive"
+                  )
+                  .setValue(currentList.join("\n"))
+                  .onChange((value) => {
+                    const parsed = value
+                      .split("\n")
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                      .map((s) => normalizePath(s));
+                    if (isIncluded) {
+                      this.plugin.settings.includedFolders = parsed;
+                    } else {
+                      this.plugin.settings.excludedFolders = parsed;
+                    }
+                    normalizeFolderReviewRules(this.plugin.settings);
+                    this.scheduleSettingsSave();
+                    this.scheduleReviewStateRefresh();
+                  });
+                text.inputEl.rows = 5;
+                text.inputEl.addClass("review-settings-textarea");
               });
-            normalizeFolderReviewRules(this.plugin.settings);
-            this.scheduleSettingsSave();
-            this.scheduleReviewStateRefresh();
-          });
-        text.inputEl.rows = 5;
-        text.inputEl.addClass("review-settings-textarea");
-      });
-
-    new Setting(containerEl).setName("UI").setHeading();
-
-    new Setting(containerEl)
-      .setName("Review status in status bar")
-      .setDesc(
-        "Shows per-file review indicator (last review date / due / not reviewed) for the active note."
-      )
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.showReviewStatus)
-          .onChange(async (value) => {
-            this.plugin.settings.showReviewStatus = value;
-            await this.plugin.saveSettings();
-            this.refreshReviewState();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName("Due counter in status bar")
-      .setDesc(
-        "Shows total count of notes due for review across vault, next to the current-note indicator."
-      )
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.showDueCounter)
-          .onChange(async (value) => {
-            this.plugin.settings.showDueCounter = value;
-            await this.plugin.saveSettings();
-            this.refreshReviewState();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName("Ribbon icon")
-      .setDesc("Adds a left ribbon button that opens a random note due for review.")
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.showRibbonIcon)
-          .onChange(async (value) => {
-            this.plugin.settings.showRibbonIcon = value;
-            await this.plugin.saveSettings();
-            this.plugin.updateRibbonIcon();
-          })
-      );
-
-    new Setting(containerEl).setName("Advanced").setHeading();
-
-    new Setting(containerEl)
-      .setName("Frontmatter interval key")
-      .setDesc(
-        'Frontmatter field for per-note interval override. Set to a number (days) to include the note, or "never" to exclude it.'
-      )
-      .addText((text) =>
-        text
-          .setValue(this.plugin.settings.frontmatterIntervalKey)
-          .onChange(async (value) => {
-            const v = value.trim();
-            if (isValidFrontmatterKey(v)) {
-              this.plugin.settings.frontmatterIntervalKey = v;
-              await this.plugin.saveSettings();
-              this.refreshReviewState();
-            }
-          })
-      );
-
-    new Setting(containerEl)
-      .setName("Frontmatter reviewed key")
-      .setDesc("Frontmatter field where the last review date is stored.")
-      .addText((text) =>
-        text
-          .setValue(this.plugin.settings.frontmatterReviewedKey)
-          .onChange(async (value) => {
-            const v = value.trim();
-            if (isValidFrontmatterKey(v)) {
-              this.plugin.settings.frontmatterReviewedKey = v;
-              await this.plugin.saveSettings();
-              this.refreshReviewState();
-            }
-          })
-      );
+            },
+          },
+          {
+            label: "Folder-specific intervals",
+            description:
+              'Custom review intervals per folder. Format: "folder/path,days" — one rule per line. ' +
+              "Uses longest matching path when rules overlap. Example: Daily Notes,90",
+            render: (setting) => {
+              setting.addTextArea((text) => {
+                text
+                  .setPlaceholder("Notes,90\nprojects/portfolio,30")
+                  .setValue(
+                    this.plugin.settings.folderIntervals
+                      .map((r) => `${r.folder},${r.days}`)
+                      .join("\n")
+                  )
+                  .onChange((value) => {
+                    this.plugin.settings.folderIntervals = value
+                      .split("\n")
+                      .map((line) => line.trim())
+                      .filter(Boolean)
+                      .flatMap((line) => {
+                        const idx = line.lastIndexOf(",");
+                        if (idx < 1) return [];
+                        const folder = line.slice(0, idx).trim();
+                        const days = parsePositiveDayCount(line.slice(idx + 1));
+                        if (!folder || days === null) return [];
+                        return [{ folder: normalizePath(folder), days }];
+                      });
+                    normalizeFolderReviewRules(this.plugin.settings);
+                    this.scheduleSettingsSave();
+                    this.scheduleReviewStateRefresh();
+                  });
+                text.inputEl.rows = 5;
+                text.inputEl.addClass("review-settings-textarea");
+              });
+            },
+          },
+        ],
+      },
+      {
+        heading: "UI",
+        items: [
+          {
+            label: "Review status in status bar",
+            description:
+              "Shows per-file review indicator (last review date / due / not reviewed) for the active note.",
+            render: (setting) => {
+              setting.addToggle((toggle) =>
+                toggle
+                  .setValue(this.plugin.settings.showReviewStatus)
+                  .onChange(async (value) => {
+                    this.plugin.settings.showReviewStatus = value;
+                    await this.plugin.saveSettings();
+                    this.refreshReviewState();
+                  })
+              );
+            },
+          },
+          {
+            label: "Due counter in status bar",
+            description:
+              "Shows total count of notes due for review across vault, next to the current-note indicator.",
+            render: (setting) => {
+              setting.addToggle((toggle) =>
+                toggle
+                  .setValue(this.plugin.settings.showDueCounter)
+                  .onChange(async (value) => {
+                    this.plugin.settings.showDueCounter = value;
+                    await this.plugin.saveSettings();
+                    this.refreshReviewState();
+                  })
+              );
+            },
+          },
+          {
+            label: "Ribbon icon",
+            description:
+              "Adds a left ribbon button that opens a random note due for review.",
+            render: (setting) => {
+              setting.addToggle((toggle) =>
+                toggle
+                  .setValue(this.plugin.settings.showRibbonIcon)
+                  .onChange(async (value) => {
+                    this.plugin.settings.showRibbonIcon = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.updateRibbonIcon();
+                  })
+              );
+            },
+          },
+        ],
+      },
+      {
+        heading: "Advanced",
+        items: [
+          {
+            label: "Frontmatter interval key",
+            description:
+              'Frontmatter field for per-note interval override. Set to a number (days) to include the note, or "never" to exclude it.',
+            render: (setting) => {
+              setting.addText((text) =>
+                text
+                  .setValue(this.plugin.settings.frontmatterIntervalKey)
+                  .onChange(async (value) => {
+                    const v = value.trim();
+                    if (isValidFrontmatterKey(v)) {
+                      this.plugin.settings.frontmatterIntervalKey = v;
+                      await this.plugin.saveSettings();
+                      this.refreshReviewState();
+                    }
+                  })
+              );
+            },
+          },
+          {
+            label: "Frontmatter reviewed key",
+            description:
+              "Frontmatter field where the last review date is stored.",
+            render: (setting) => {
+              setting.addText((text) =>
+                text
+                  .setValue(this.plugin.settings.frontmatterReviewedKey)
+                  .onChange(async (value) => {
+                    const v = value.trim();
+                    if (isValidFrontmatterKey(v)) {
+                      this.plugin.settings.frontmatterReviewedKey = v;
+                      await this.plugin.saveSettings();
+                      this.refreshReviewState();
+                    }
+                  })
+              );
+            },
+          },
+        ],
+      },
+    ];
   }
 }
