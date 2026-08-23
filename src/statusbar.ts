@@ -104,6 +104,7 @@ export class ReviewStatusBar {
       popupDocument,
       anchorEl,
       details,
+      settings.reviewDetailsFontSizeAdjustment,
       () => this.markReviewed(file),
       () => {
         if (this.popover === popover) this.popover = null;

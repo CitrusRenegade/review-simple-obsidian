@@ -29,6 +29,7 @@ export class ReviewDetailsPopover extends Component {
     private readonly popupDocument: Document,
     private readonly anchorEl: HTMLElement | null,
     private readonly details: ReviewDetails,
+    private readonly fontSizeAdjustment: number,
     private readonly onMarkReviewed: () => Promise<boolean>,
     private readonly onClose: () => void
   ) {
@@ -48,6 +49,10 @@ export class ReviewDetailsPopover extends Component {
     root.setAttribute("role", "dialog");
     root.setAttribute("aria-label", "Review details");
     root.tabIndex = -1;
+    root.style.setProperty(
+      "--review-details-font-size-adjustment",
+      `${this.fontSizeAdjustment}px`
+    );
     this.popoverEl = root;
 
     const headerEl = root.createDiv({ cls: "review-details-header" });
@@ -198,8 +203,8 @@ export class ReviewDetailsPopover extends Component {
     );
     const rootFontSize =
       Number.isFinite(parsedRootFontSize) && parsedRootFontSize > 0
-        ? parsedRootFontSize
-        : 16;
+        ? parsedRootFontSize + this.fontSizeAdjustment
+        : 16 + this.fontSizeAdjustment;
     root.removeClass("is-width-constrained");
     const rootStyle = viewWindow.getComputedStyle(root);
     const headerStyle = this.headerEl

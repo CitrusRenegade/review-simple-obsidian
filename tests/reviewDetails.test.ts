@@ -17,6 +17,7 @@ const settings: ReviewSettings = {
   showReviewStatus: true,
   showDueCounter: true,
   showRibbonIcon: false,
+  reviewDetailsFontSizeAdjustment: 0,
   frontmatterIntervalKey: "review_interval",
   frontmatterReviewedKey: "reviewed",
 };

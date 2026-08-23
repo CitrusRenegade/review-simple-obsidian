@@ -25,6 +25,7 @@ export interface ReviewSettings {
   showReviewStatus: boolean;
   showDueCounter: boolean;
   showRibbonIcon: boolean;
+  reviewDetailsFontSizeAdjustment: number;
   frontmatterIntervalKey: string;
   frontmatterReviewedKey: string;
 }
@@ -38,6 +39,7 @@ export const DEFAULT_SETTINGS: ReviewSettings = {
   showReviewStatus: true,
   showDueCounter: true,
   showRibbonIcon: false,
+  reviewDetailsFontSizeAdjustment: 0,
   frontmatterIntervalKey: "review_interval",
   frontmatterReviewedKey: "reviewed",
 };
@@ -75,6 +77,13 @@ function asBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
 }
 
+function asReviewDetailsFontSizeAdjustment(value: unknown): number {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return DEFAULT_SETTINGS.reviewDetailsFontSizeAdjustment;
+  }
+  return Math.max(-2, Math.min(2, value));
+}
+
 function asNonEmptyString(value: unknown, fallback: string): string {
   if (typeof value !== "string") return fallback;
   const trimmed = value.trim();
@@ -97,6 +106,12 @@ function validatePositiveDayCount(value: number): string | void {
   return Number.isSafeInteger(value) && value > 0
     ? undefined
     : "Enter a whole number of days.";
+}
+
+function validateReviewDetailsFontSizeAdjustment(value: number): string | void {
+  return Number.isInteger(value) && value >= -2 && value <= 2
+    ? undefined
+    : "Choose a whole-number font step from -2 to 2.";
 }
 
 function validateFrontmatterKey(value: string): string | void {
@@ -147,6 +162,9 @@ export function loadReviewSettings(data: unknown): ReviewSettings {
     showRibbonIcon: asBoolean(
       raw.showRibbonIcon,
       DEFAULT_SETTINGS.showRibbonIcon
+    ),
+    reviewDetailsFontSizeAdjustment: asReviewDetailsFontSizeAdjustment(
+      raw.reviewDetailsFontSizeAdjustment
     ),
     frontmatterIntervalKey: asFrontmatterKey(
       raw.frontmatterIntervalKey,
@@ -233,6 +251,12 @@ export class ReviewSettingTab extends PluginSettingTab {
     if (key === "globalIntervalDays" && typeof value === "number") {
       if (validatePositiveDayCount(value) !== undefined) return;
       settings.globalIntervalDays = value;
+    } else if (
+      key === "reviewDetailsFontSizeAdjustment" &&
+      typeof value === "number"
+    ) {
+      if (validateReviewDetailsFontSizeAdjustment(value) !== undefined) return;
+      settings.reviewDetailsFontSizeAdjustment = value;
     } else if (
       (key === "showReviewStatus" || key === "showDueCounter" || key === "showRibbonIcon") &&
       typeof value === "boolean"

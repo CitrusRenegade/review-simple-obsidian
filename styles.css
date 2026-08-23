@@ -9,6 +9,7 @@
 }
 
 .review-details-popover {
+  --review-details-font-size-adjustment: 0px;
   position: fixed;
   z-index: var(--layer-popover);
   max-height: min(32rem, calc(100vh - 1rem));
@@ -23,6 +24,7 @@
 
 .review-details-timing {
   font-weight: var(--font-semibold);
+  font-size: calc(1em + var(--review-details-font-size-adjustment));
   white-space: nowrap;
 }
 
@@ -40,7 +42,7 @@
 .review-details-last-reviewed {
   margin-top: 0.2rem;
   color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
+  font-size: calc(var(--font-ui-smaller) + var(--review-details-font-size-adjustment));
   white-space: nowrap;
 }
 
@@ -61,7 +63,7 @@
 .review-details-calculation summary {
   cursor: pointer;
   color: var(--text-muted);
-  font-size: var(--font-ui-small);
+  font-size: calc(var(--font-ui-small) + var(--review-details-font-size-adjustment));
   font-weight: var(--font-medium);
   white-space: nowrap;
 }
@@ -69,7 +71,7 @@
 .review-details-mode {
   margin: 0.65rem 0 0.45rem;
   color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
+  font-size: calc(var(--font-ui-smaller) + var(--review-details-font-size-adjustment));
   white-space: nowrap;
 }
 
@@ -81,12 +83,12 @@
 
 .review-details-calculation-row {
   display: grid;
-  grid-template-columns: 1rem minmax(0, 1fr) minmax(0, max-content) max-content;
+  grid-template-columns: calc(1rem + var(--review-details-font-size-adjustment)) minmax(0, 1fr) minmax(0, max-content) max-content;
   gap: 0.5rem;
   align-items: baseline;
   padding: 0.18rem 0;
   color: var(--text-muted);
-  font-size: var(--font-ui-smaller);
+  font-size: calc(var(--font-ui-smaller) + var(--review-details-font-size-adjustment));
 }
 
 .review-details-calculation-position {
@@ -129,12 +131,13 @@
 }
 
 .review-details-actions button {
+  font-size: calc(var(--font-ui-small) + var(--review-details-font-size-adjustment));
   white-space: nowrap;
 }
 
 @media (max-width: 480px) {
   .review-details-calculation-row {
-    grid-template-columns: 1rem minmax(0, 1fr) minmax(0, max-content) max-content;
+    grid-template-columns: calc(1rem + var(--review-details-font-size-adjustment)) minmax(0, 1fr) minmax(0, max-content) max-content;
   }
 }
 

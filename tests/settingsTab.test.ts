@@ -11,7 +11,11 @@ vi.mock("obsidian", () => ({
   normalizePath: (path: string) => path,
 }));
 
-import { ReviewSettingTab, type ReviewSettings } from "../src/settings";
+import {
+  loadReviewSettings,
+  ReviewSettingTab,
+  type ReviewSettings,
+} from "../src/settings";
 
 type Definition = {
   name?: string;
@@ -45,6 +49,7 @@ const settings: ReviewSettings = {
   showReviewStatus: true,
   showDueCounter: true,
   showRibbonIcon: false,
+  reviewDetailsFontSizeAdjustment: 0,
   frontmatterIntervalKey: "review_interval",
   frontmatterReviewedKey: "reviewed",
 };
@@ -91,6 +96,24 @@ afterEach(() => {
 });
 
 describe("ReviewSettingTab declarative controls", () => {
+  it("keeps the future review-details font adjustment within its slider range", () => {
+    const defaultSettings = loadReviewSettings({}) as unknown as Record<string, unknown>;
+    const largerSettings = loadReviewSettings({
+      reviewDetailsFontSizeAdjustment: 2,
+    }) as unknown as Record<string, unknown>;
+    const outOfRangeSettings = loadReviewSettings({
+      reviewDetailsFontSizeAdjustment: 3,
+    }) as unknown as Record<string, unknown>;
+    const fractionalSettings = loadReviewSettings({
+      reviewDetailsFontSizeAdjustment: 0.5,
+    }) as unknown as Record<string, unknown>;
+
+    expect(defaultSettings.reviewDetailsFontSizeAdjustment).toBe(0);
+    expect(largerSettings.reviewDetailsFontSizeAdjustment).toBe(2);
+    expect(outOfRangeSettings.reviewDetailsFontSizeAdjustment).toBe(2);
+    expect(fractionalSettings.reviewDetailsFontSizeAdjustment).toBe(0);
+  });
+
   it("exposes validated native controls and search aliases for simple settings", () => {
     const { tab } = createTab();
     const definitions = tab.getSettingDefinitions() as Definition[];
@@ -184,5 +207,21 @@ describe("ReviewSettingTab declarative controls", () => {
     expect(plugin.settings.showRibbonIcon).toBe(true);
     expect(plugin.saveSettings).toHaveBeenCalledTimes(2);
     expect(plugin.updateRibbonIcon).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists a future review-details font slider step and rejects values outside its range", async () => {
+    const { plugin, tab } = createTab();
+
+    await tab.setControlValue("reviewDetailsFontSizeAdjustment", 2);
+
+    expect(plugin.settings.reviewDetailsFontSizeAdjustment).toBe(2);
+    expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
+    expect(plugin.refreshReviewState).toHaveBeenCalledTimes(1);
+
+    await tab.setControlValue("reviewDetailsFontSizeAdjustment", 3);
+
+    expect(plugin.settings.reviewDetailsFontSizeAdjustment).toBe(2);
+    expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
+    expect(plugin.refreshReviewState).toHaveBeenCalledTimes(1);
   });
 });
