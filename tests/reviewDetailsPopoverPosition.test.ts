@@ -7,15 +7,16 @@ import {
 } from "../src/reviewDetailsPopoverPosition";
 
 describe("calculateCalculationRowMinimumWidth", () => {
-  it("keeps every calculation column on one line when the viewport allows it", () => {
+  it("uses the measured tracks instead of reserving space for short labels", () => {
     expect(
       calculateCalculationRowMinimumWidth({
-        rootFontSize: 16,
-        labelWidth: 100,
-        valueWidth: 220,
-        columnGap: 8,
+      positionWidth: 16,
+      labelWidth: 100,
+      valueWidth: 220,
+      appliedWidth: 10,
+      columnGap: 8,
       })
-    ).toBe(396);
+    ).toBe(370);
   });
 });
 
@@ -33,43 +34,24 @@ describe("calculatePopoverMinimumRequiredWidth", () => {
 });
 
 describe("calculatePopoverWidth", () => {
-  it("uses a compact collapsed width and a wider expanded width, clamped on mobile", () => {
+  it("uses the measured content width without adding empty space", () => {
     expect(
       calculatePopoverWidth({
-        expanded: false,
-        rootFontSize: 16,
         viewportWidth: 1440,
+        minimumRequiredWidth: 178,
       })
-    ).toBe(320);
-    expect(
-      calculatePopoverWidth({
-        expanded: true,
-        rootFontSize: 16,
-        viewportWidth: 1440,
-      })
-    ).toBe(352);
-    expect(
-      calculatePopoverWidth({
-        expanded: true,
-        rootFontSize: 16,
-        viewportWidth: 300,
-      })
-    ).toBe(284);
+    ).toBe(178);
   });
 
   it("expands to the measured one-line header width until the viewport constrains it", () => {
     expect(
       calculatePopoverWidth({
-        expanded: false,
-        rootFontSize: 16,
         viewportWidth: 1440,
         minimumRequiredWidth: 390,
       })
     ).toBe(390);
     expect(
       calculatePopoverWidth({
-        expanded: false,
-        rootFontSize: 16,
         viewportWidth: 360,
         minimumRequiredWidth: 390,
       })

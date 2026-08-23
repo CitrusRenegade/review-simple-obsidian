@@ -45,7 +45,10 @@
 }
 
 .review-details-popover.is-width-constrained .review-details-timing,
-.review-details-popover.is-width-constrained .review-details-last-reviewed {
+.review-details-popover.is-width-constrained .review-details-last-reviewed,
+.review-details-popover.is-width-constrained .review-details-calculation summary,
+.review-details-popover.is-width-constrained .review-details-mode {
+  overflow-wrap: anywhere;
   white-space: normal;
 }
 
@@ -78,7 +81,7 @@
 
 .review-details-calculation-row {
   display: grid;
-  grid-template-columns: 1rem minmax(7.5rem, auto) minmax(0, 1fr) 1rem;
+  grid-template-columns: 1rem minmax(0, 1fr) minmax(0, max-content) max-content;
   gap: 0.5rem;
   align-items: baseline;
   padding: 0.18rem 0;
@@ -103,11 +106,15 @@
 }
 
 .review-details-calculation-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
   white-space: nowrap;
 }
 
 .review-details-popover.is-width-constrained
-  .review-details-calculation-value {
+  .review-details-calculation-value,
+.review-details-popover.is-width-constrained
+  .review-details-calculation-label {
   white-space: normal;
 }
 
@@ -127,7 +134,7 @@
 
 @media (max-width: 480px) {
   .review-details-calculation-row {
-    grid-template-columns: 1rem 1fr 1.25fr 1rem;
+    grid-template-columns: 1rem minmax(0, 1fr) minmax(0, max-content) max-content;
   }
 }
 

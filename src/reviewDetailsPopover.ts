@@ -242,15 +242,19 @@ export class ReviewDetailsPopover extends Component {
         const value = row.querySelector<HTMLElement>(
           ".review-details-calculation-value"
         );
+        const applied = row.querySelector<HTMLElement>(
+          ".review-details-calculation-applied"
+        );
         const columnGap = Number.parseFloat(
           viewWindow.getComputedStyle(row).columnGap
         );
         calculationContentWidth = Math.max(
           calculationContentWidth,
           calculateCalculationRowMinimumWidth({
-            rootFontSize,
+            positionWidth: rootFontSize,
             labelWidth: label?.scrollWidth ?? 0,
             valueWidth: value?.scrollWidth ?? 0,
+            appliedWidth: applied?.scrollWidth ?? 0,
             columnGap,
           })
         );
@@ -268,8 +272,6 @@ export class ReviewDetailsPopover extends Component {
         verticalScrollbarGutter: 0,
       });
     const preliminaryWidth = calculatePopoverWidth({
-      expanded: this.calculationEl?.open ?? false,
-      rootFontSize,
       viewportWidth: viewWindow.innerWidth,
       minimumRequiredWidth: minimumRequiredWidthWithoutScrollbar,
     });
@@ -291,8 +293,6 @@ export class ReviewDetailsPopover extends Component {
       verticalScrollbarGutter,
     });
     const finalWidth = calculatePopoverWidth({
-      expanded: this.calculationEl?.open ?? false,
-      rootFontSize,
       viewportWidth: viewWindow.innerWidth,
       minimumRequiredWidth,
     });
@@ -316,9 +316,6 @@ export class ReviewDetailsPopover extends Component {
 
     root.style.left = `${position.left}px`;
     root.style.bottom = `${position.bottom}px`;
-    root.style.maxHeight = `${Math.max(
-      160,
-      viewWindow.innerHeight - position.bottom - 8
-    )}px`;
+    root.style.maxHeight = `${Math.max(0, viewWindow.innerHeight - position.bottom - 8)}px`;
   }
 }

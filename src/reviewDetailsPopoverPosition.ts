@@ -19,16 +19,15 @@ export interface PopoverPosition {
 }
 
 export interface PopoverWidthInput {
-  expanded: boolean;
-  rootFontSize: number;
   viewportWidth: number;
   minimumRequiredWidth?: number;
 }
 
 export interface CalculationRowWidthInput {
-  rootFontSize: number;
+  positionWidth: number;
   labelWidth: number;
   valueWidth: number;
+  appliedWidth: number;
   columnGap: number;
 }
 
@@ -40,17 +39,17 @@ export interface PopoverMinimumRequiredWidthInput {
 }
 
 export function calculateCalculationRowMinimumWidth({
-  rootFontSize,
+  positionWidth,
   labelWidth,
   valueWidth,
+  appliedWidth,
   columnGap,
 }: CalculationRowWidthInput): number {
-  const fixedColumnsWidth = rootFontSize * 2;
-  const minimumLabelWidth = rootFontSize * 7.5;
   return (
-    fixedColumnsWidth +
-    Math.max(minimumLabelWidth, labelWidth) +
+    positionWidth +
+    labelWidth +
     valueWidth +
+    appliedWidth +
     columnGap * 3
   );
 }
@@ -70,17 +69,11 @@ export function calculatePopoverMinimumRequiredWidth({
 }
 
 export function calculatePopoverWidth({
-  expanded,
-  rootFontSize,
   viewportWidth,
   minimumRequiredWidth = 0,
 }: PopoverWidthInput): number {
   const margin = 8;
-  const widthInRem = expanded ? 22 : 20;
-  return Math.min(
-    Math.max(widthInRem * rootFontSize, minimumRequiredWidth),
-    viewportWidth - margin * 2
-  );
+  return Math.max(0, Math.min(minimumRequiredWidth, viewportWidth - margin * 2));
 }
 
 export function calculatePopoverPosition({
