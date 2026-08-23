@@ -140,14 +140,14 @@ describe("ReviewSettingTab declarative controls", () => {
       type: "text",
       key: "frontmatterReviewedKey",
     });
-    expect(definitionByName(definitions, "Mode: exclude").aliases).toEqual(
+    expect(definitionByName(definitions, "Mode: Exclude").aliases).toEqual(
       expect.arrayContaining(["mode", "include", "exclude"])
     );
   });
 
   it("updates the folder filter label after its toggle changes mode", async () => {
     const { tab, update } = createTab();
-    const mode = definitionByName(tab.getSettingDefinitions() as Definition[], "Mode: exclude");
+    const mode = definitionByName(tab.getSettingDefinitions() as Definition[], "Mode: Exclude");
     let onChange: ((value: boolean) => Promise<void>) | undefined;
     const toggle: ModeToggle = {
       setValue: () => toggle,
@@ -168,7 +168,7 @@ describe("ReviewSettingTab declarative controls", () => {
     await onChange(true);
 
     expect(update).toHaveBeenCalledTimes(1);
-    expect(definitionByName(tab.getSettingDefinitions() as Definition[], "Mode: include")).toBeDefined();
+    expect(definitionByName(tab.getSettingDefinitions() as Definition[], "Mode: Include")).toBeDefined();
   });
 
   it("persists declarative control changes and keeps their UI side effects", async () => {
