@@ -1,9 +1,12 @@
 name: Release
 
+# Keep this workflow registered on the default branch for tag-triggered releases.
+
 on:
   push:
     tags:
       - "*"
+  workflow_dispatch:
 
 permissions:
   contents: write
