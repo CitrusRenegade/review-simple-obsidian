@@ -98,3 +98,7 @@ There are several Obsidian plugins and workflows for revisiting notes with their
 <ins>**Powerful plugins + home-grown templates**</ins> - A similar workflow can be built with Dataview queries, custom query logic, and Templater commands for quickly marking notes as reviewed. This can be very flexible, but it also means maintaining a custom system instead of using a focused review workflow.
 
 *Inspired by the "Reviewed by ... on ..." field on WebMD and other.*
+
+![Thin white WebP divider, relative path](.github/assets/readme-webp-divider.webp)
+
+![Thin white WebP divider, direct URL](https://raw.githubusercontent.com/CitrusRenegade/review-simple-obsidian/master/.github/assets/readme-webp-divider.webp)
