@@ -99,6 +99,6 @@ There are several Obsidian plugins and workflows for revisiting notes with their
 
 *Inspired by the "Reviewed by ... on ..." field on WebMD and other.*
 
-![Thin white WebP divider, relative path](.github/assets/readme-webp-divider.webp)
-
 ![Thin white WebP divider, direct URL](https://raw.githubusercontent.com/CitrusRenegade/review-simple-obsidian/master/.github/assets/readme-webp-divider.webp)
+
+![Thin white WebP divider, relative path](.github/assets/readme-webp-divider.webp)
